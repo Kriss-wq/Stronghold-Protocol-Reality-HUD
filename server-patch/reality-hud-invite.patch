@@ -1,0 +1,145 @@
+diff --git a/docs/design/network.md b/docs/design/network.md
+index 377ee918..dcd9679a 100644
+--- a/docs/design/network.md
++++ b/docs/design/network.md
+@@ -7,8 +7,8 @@ Part of [DESIGN.md](../DESIGN.md) (the index; section numbers are global).
+ Transport: one WebSocket per tab at `/ws`, JSON text frames `{ t: '<type>', ...payload }`. Client requests may carry `rid` (request id); the server's direct reply echoes `rid` (`ok` or `error`). Server pushes have no `rid`. Max frame 64 KB inbound; rate limit 40 msgs/s per connection (excess dropped with `error RATE`).
+ 
+ ### 8.1 Session & lobby
+-C→S: `hello {name, token?, version}` · `room.create {mode:'solo'|'coop', difficulty}` · `room.join {code}` · `room.leave` · `room.ready {ready}` · `room.setDifficulty {difficulty}` (host) · `room.setAiPicksLast {on}` (host, co-op, before the match — `ROOM_STARTED` during it, `BAD_TARGET` in a solo room; un-readies the other humans like a difficulty change; the match takes it as `opts.aiPicksLast`: humans draft before AI seats, off by default, no extra random draw) · `room.addBot` / `room.removeBot {seat}` (host) · `room.kick {seat, playerId}` (host, before the match: another human leaves the room and gets `room.closed {reason:'kicked'}`; may join again; `playerId` = the player the host confirmed, a seat that changed hands meanwhile → `BAD_TARGET`) · `room.start` (host) · `room.loadout {entries, ops?}` (§16: any time in the lobby / room and during INFO_CHECK, then `WRONG_PHASE`; heavy rate-limit bucket; the match exposes it as `m.private.loadout`; `ops` — 0.2.2 — the per-operator 潜能 / 练度 `{ [charId]: { potential?: 1–6, cultivate?: 0–3 } }` of the 干员调配 roster and the 自选 owned pool, ≤ 256, checked strictly with the entries, `m.private.ops`; absent = none set: every operator 潜能 6, 精英2 Lv.60) · `room.ownership {notOwned}` (0.2.0 补位, the 干员持有 tab: the base chess ids marked as not owned — ≤ 160 ids, kept leniently: anything but a droppable NORMAL chess is dropped; stored on the session and the seat, a match takes the seat's list when it starts and never changes it — during a match `ROOM_STARTED` 'stored for the next match'; heavy bucket; the match exposes it as `m.private.standIns`) · `room.diy {picks}` (0.2.0 自选编队: `{ [slotBaseId]: { charId, skillIndex?, uniEquipId? } | null }` for the four DIY slots — ≤ 8 entries, kept leniently: shared/protocol.js `checkDiyPicks` drops an illegal pick (an operator without a kit, another tier's prototype, a prototype off its locked skill, a module of another game mode (集成战略 / 生息演算), an owned operator's second slot, the same operator twice in a tier, an unknown slot), only malformed picks are `BAD_MSG`; stored on the session and the seat like the not-owned list, a match takes the seat's picks when it starts — during a match `ROOM_STARTED` 'stored for the next match'; heavy bucket; the match exposes them as `m.private.diy`) · `ping {c}`
+-S→C: `welcome {playerId, token, name, serverNow}` · `room.state {code, hostId, mode, difficulty, aiPicksLast, seats:[{seat, playerId, name, isBot, ready, connected}|null ×4]}` · `room.closed {reason}` · `pong {c, s}` · `error {rid?, code, msg}` · `ok {rid}`
++C→S: `hello {name, token?, version}` · `room.create {mode:'solo'|'coop', difficulty}` · `room.join {code}` · `room.leave` · `room.ready {ready}` · `room.setDifficulty {difficulty}` (host) · `room.setAiPicksLast {on}` (host, co-op, before the match — `ROOM_STARTED` during it, `BAD_TARGET` in a solo room; un-readies the other humans like a difficulty change; the match takes it as `opts.aiPicksLast`: humans draft before AI seats, off by default, no extra random draw) · `room.addBot` / `room.removeBot {seat}` (host) · `room.kick {seat, playerId}` (host, before the match: another human leaves the room and gets `room.closed {reason:'kicked'}`; may join again; `playerId` = the player the host confirmed, a seat that changed hands meanwhile → `BAD_TARGET`) · `room.start` (host) · `room.loadout {entries, ops?}` (§16: any time in the lobby / room and during INFO_CHECK, then `WRONG_PHASE`; heavy rate-limit bucket; the match exposes it as `m.private.loadout`; `ops` — 0.2.2 — the per-operator 潜能 / 练度 `{ [charId]: { potential?: 1–6, cultivate?: 0–3 } }` of the 干员调配 roster and the 自选 owned pool, ≤ 256, checked strictly with the entries, `m.private.ops`; absent = none set: every operator 潜能 6, 精英2 Lv.60) · `room.ownership {notOwned}` (0.2.0 补位, the 干员持有 tab: the base chess ids marked as not owned — ≤ 160 ids, kept leniently: anything but a droppable NORMAL chess is dropped; stored on the session and the seat, a match takes the seat's list when it starts and never changes it — during a match `ROOM_STARTED` 'stored for the next match'; heavy bucket; the match exposes it as `m.private.standIns`) · `room.diy {picks}` (0.2.0 自选编队: `{ [slotBaseId]: { charId, skillIndex?, uniEquipId? } | null }` for the four DIY slots — ≤ 8 entries, kept leniently: shared/protocol.js `checkDiyPicks` drops an illegal pick (an operator without a kit, another tier's prototype, a prototype off its locked skill, a module of another game mode (集成战略 / 生息演算), an owned operator's second slot, the same operator twice in a tier, an unknown slot), only malformed picks are `BAD_MSG`; stored on the session and the seat like the not-owned list, a match takes the seat's picks when it starts — during a match `ROOM_STARTED` 'stored for the next match'; heavy bucket; the match exposes them as `m.private.diy`) · `room.invite {playerId}` (the Reality HUD overlay's in-game invite: forward the sender's room code to another online session as the push `room.invited`; the sender must hold a player seat of its own room — `NOT_IN_ROOM` / `SPECTATOR` — and the target another connected session, else `BAD_TARGET` 'no such player online' / 'already in this room'; heavy bucket, 2/s burst 6) · `ping {c}`
++S→C: `welcome {playerId, token, name, serverNow}` · `room.state {code, hostId, mode, difficulty, aiPicksLast, seats:[{seat, playerId, name, isBot, ready, connected}|null ×4]}` · `room.closed {reason}` · `room.invited {from, name, code}` (the forwarded `room.invite` above — vanilla clients ignore the unknown push, the Reality HUD banner joins with `room.join`) · `pong {c, s}` · `error {rid?, code, msg}` · `ok {rid}`
+ 
+ Platform additions (implemented): `welcome.{resumed, version}`, `welcome.diyKitted` (0.2.0: the operators a 自选 slot may field — server/sim/content/kits/index.js `KITTED_CHARS`, the picker's list), `room.state.inMatch`, `error.detail`; `room.closed.reason ∈ 'timeout'|'kicked'|'empty'|'shutdown'` (`kicked`: room.kick / room.removeSpectator; `empty`: a spectator whose room lost its last player); WebSocket close codes 4001 (session taken over by another socket — client must not auto-reconnect), 4002 (no hello in time), 1008 (flooding), 1001 (shutdown). The host's `room.start` counts as the host being ready. After any (re)`hello` the server pushes `room.state` and, if a match runs, the match resends `m.public`/`m.private` (+`m.field`, or the field's `b.start` under client-side combat). **Reconnect window:** a dropped session stays resumable for 10 min (`net.js NET_DEFAULTS.reconnectWindowMs`; co-op seats keep playing their last lineup meanwhile, §6.6); a session that drops while its **solo** room's match runs stays resumable for the official `config.constants.singleReconnectTime` (86 400 s = 24 h; lobby option `soloReconnectWindowMs`; research 01 §1 "24小时内随时返回") — the untimed solo run simply waits. Only when the window expires does the drop become `match.onLeave` (co-op: 中途退出 = elimination; solo: the run ends `'abandoned'`). The client keeps its token in sessionStorage plus a recent-token list in localStorage, so reopening the tab resumes. Everything lives in server memory: a server restart ends every room and run. The lobby⇄match interface (constructor opts, `start/handle/onDisconnect/onReconnect/onLeave/dispose`) is documented verbatim at the top of `server/match/Match.js` and is normative. `server/data.js` provides `getData()` + index getters (`getChess`, `getBond`, `getGarrison`, `getItem`, `getBand`, `getEffect`, `getEnemy`, `getWave`, `getStage`, `getBoss`, `getToken`, `getConfig`, `getMode`). Note: the skill trigger rule lives at `chess.skill.trigger.rule` in data.
+ 
+diff --git a/server/http/routes.js b/server/http/routes.js
+index ab4a12ff..0c617aa6 100644
+--- a/server/http/routes.js
++++ b/server/http/routes.js
+@@ -5,6 +5,8 @@
+ //   * any method but GET / HEAD → 405 with `Allow: GET, HEAD`;
+ //   * GET /healthz → JSON status (protocol `version`, release `app`, uptime, the served `build`, sockets, sessions,
+ //     rooms, matches), never cached;
++//   * GET /api/players → the connected sessions (Reality HUD overlay: name + where they are; no room codes, no
++//     tokens), never cached;
+ //   * everything else → the static files (static.js).
+ // A route that throws is logged and answers 500.
+ 
+@@ -29,6 +31,23 @@ export function healthReport({ startedAt, network, registry, lobby }) {
+   };
+ }
+ 
++/**
++ * The GET /api/players body (Reality HUD overlay): the sessions connected right now — who may be invited from the
++ * HUD (server/lobby.js invite). Names and playerIds are already visible in a room to its members; the room codes
++ * never leave this function (they are the join secret — only the invited session ever receives one, via
++ * S2C room.invited), and neither do tokens nor addresses.
++ * @param {{ registry: import('../net.js').SessionRegistry, lobby: import('../lobby.js').Lobby }} deps
++ */
++export function playersReport({ registry, lobby }) {
++  const players = [];
++  for (const s of registry.byPlayerId.values()) {
++    if (!s.connected) continue;
++    const room = s.roomCode ? lobby.getRoom(s.roomCode) : null;
++    players.push({ id: s.playerId, name: s.name, inRoom: !!room, inMatch: !!(room && room.match) });
++  }
++  return { ok: true, players };
++}
++
+ /**
+  * The request listener for `http.createServer`.
+  * @param {{ serveStatic: (req: import('node:http').IncomingMessage, res: import('node:http').ServerResponse,
+@@ -51,6 +70,10 @@ export function createRequestHandler({ serveStatic, health, log }) {
+       sendJson(req, res, 200, healthReport(health));
+       return;
+     }
++    if (parts.rawPath === '/api/players') {
++      sendJson(req, res, 200, playersReport({ registry: health.registry, lobby: health.lobby }));
++      return;
++    }
+     await serveStatic(req, res, parts.rawPath, parts.query);
+   }
+ 
+diff --git a/server/lobby.js b/server/lobby.js
+index 0537b9c5..de1640a4 100644
+--- a/server/lobby.js
++++ b/server/lobby.js
+@@ -350,6 +350,7 @@ export class Lobby {
+       case 'room.diy': return this.diy(session, msg);
+       case 'room.spectate': return this.spectate(session, msg);
+       case 'room.removeSpectator': return this.removeSpectator(session, msg);
++      case 'room.invite': return this.invite(session, msg);
+       default:
+         if (typeof msg.t === 'string' && msg.t.startsWith('g.')) return this.routeGame(session, msg);
+         return fail(ERR.BAD_MSG, `unhandled type ${String(msg.t).slice(0, 32)}`);
+@@ -501,6 +502,24 @@ export class Lobby {
+     return OK;
+   }
+ 
++  /**
++   * room.invite (Reality HUD overlay feature): the sender — in a room, lobby or running match — asks the server to
++   * forward its invitation to another online session: S2C room.invited { from, name, code }. The room code only ever
++   * reaches the invited session, never a list endpoint. Rate-limited by the per-connection heavy bucket (invite spam
++   * guard, server/net.js HEAVY_TYPES). Self / unknown / offline / already-here targets are BAD_TARGET; a sender with
++   * no room of its own is NOT_IN_ROOM. Vanilla clients ignore the push (no listener); the modded HUD shows a banner.
++   */
++  invite(session, { playerId }) {
++    const room = this.roomOf(session);
++    if (!room) return fail(ERR.NOT_IN_ROOM);
++    if (room.spectatorOf(session.playerId)) return fail(ERR.SPECTATOR, 'spectators cannot invite');
++    const target = this.registry.byId(playerId);
++    if (!target || !target.connected || target.playerId === session.playerId) return fail(ERR.BAD_TARGET, 'no such player online');
++    if (target.roomCode === room.code) return fail(ERR.BAD_TARGET, 'already in this room');
++    sendSession(target, { t: 'room.invited', from: session.playerId, name: session.name, code: room.code });
++    return OK;
++  }
++
+   ready(session, { ready }) {
+     const room = this.roomOf(session);
+     if (!room) return fail(ERR.NOT_IN_ROOM);
+diff --git a/server/net.js b/server/net.js
+index 38514e2c..2090e05a 100644
+--- a/server/net.js
++++ b/server/net.js
+@@ -64,10 +64,11 @@ export const NET_DEFAULTS = Object.freeze({
+  * Intents that also draw from the per-connection heavy bucket: g.watch (its reply is a large state resend, m.field),
+  * room.loadout (a ≤ 160-entry map and ≤ 256 operator settings validated against the game data; the client debounces its
+  * edits), room.ownership
+- * (a ≤ 160-id list, the same way), room.diy (≤ 8 自选 picks checked against the data, the same way) and room.spectate
+- * (taking a spectator seat in a running match resends its state like a watcher's g.watch — server/lobby.js spectate).
++ * (a ≤ 160-id list, the same way), room.diy (≤ 8 自选 picks checked against the data, the same way), room.spectate
++ * (taking a spectator seat in a running match resends its state like a watcher's g.watch — server/lobby.js spectate)
++ * and room.invite (one small push to another session — an invite-spam guard, server/lobby.js invite).
+  */
+-export const HEAVY_TYPES = new Set(['g.watch', 'room.loadout', 'room.ownership', 'room.diy', 'room.spectate']);
++export const HEAVY_TYPES = new Set(['g.watch', 'room.loadout', 'room.ownership', 'room.diy', 'room.spectate', 'room.invite']);
+ 
+ /** Close codes (see header). */
+ export const CLOSE = Object.freeze({ REPLACED: 4001, HELLO_TIMEOUT: 4002, POLICY: 1008, SHUTDOWN: 1001 });
+diff --git a/shared/protocol.js b/shared/protocol.js
+index 9f48e6fd..128aee61 100644
+--- a/shared/protocol.js
++++ b/shared/protocol.js
+@@ -411,6 +411,10 @@ export const C2S = {
+   // room.closed { reason: 'kicked' }). room.leave / g.leave leave a spectator seat like a player seat.
+   'room.spectate': { code: (v) => isStr(v, ROOM_CODE_LEN + 2) && /^[A-Za-z0-9]+$/.test(v) },
+   'room.removeSpectator': { playerId: isId },
++  // invite a player online to your own room (Reality HUD overlay): the server pushes S2C room.invited { from, name, code }
++  // to the target session (server/lobby.js invite; heavy bucket — invite spam guard). The room code only ever reaches
++  // the invited session, never a list endpoint.
++  'room.invite': { playerId: isId },
+ 
+   // match
+   'g.infoReady': { setupRevision: (v) => isInt(v, 0, 2 ** 31), $optional: ['setupRevision'] },
+@@ -471,6 +475,10 @@ export const C2S = {
+ export const S2C = [
+   'welcome', 'ok', 'error', 'pong',
+   'room.state', 'room.closed',
++  // room.invited { from, name, code } — another player asks you to join their room (Reality HUD overlay; forwarded by
++  // server/lobby.js invite). Vanilla clients have no listener and ignore it; the modded HUD shows a banner and joins
++  // with room.join.
++  'room.invited',
+   'm.public', 'm.private', 'm.field', 'm.toast', 'm.ticker', 'm.emote', 'm.result',
+   // m.layer { playerId, bondId, add } — own live prep layer gain; ephemeral, never replayed on resync.
+   'm.layer',

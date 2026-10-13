@@ -1,0 +1,30 @@
+{
+  "name": "reality-hud",
+  "version": "1.3.1",
+  "description": "可拖拽的悬浮窗 mod：连接状态、延迟曲线、在线人数、本局状态、邀请好友（免密钥）、性能、事件日志 | A draggable floating HUD overlay mod for Stronghold Protocol",
+  "keywords": [
+    "mod",
+    "hud",
+    "overlay",
+    "stronghold-protocol",
+    "arknights",
+    "卫戍协议"
+  ],
+  "author": "Reality",
+  "license": "MIT",
+  "homepage": "https://reality-blog.asia",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xianshi3/reality-hud.git"
+  },
+  "bugs": {
+    "url": "https://github.com/xianshi3/reality-hud/issues"
+  },
+  "type": "module",
+  "scripts": {
+    "test": "node test/hud-smoke.mjs"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^25.12.0"
+  }
+}
