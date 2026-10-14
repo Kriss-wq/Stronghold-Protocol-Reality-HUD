@@ -69,7 +69,7 @@ author is [@xianshi3](https://github.com/xianshi3). The interface is Chinese-fir
 - **折叠**：标题栏 `—`；**隐藏**：`×`，之后点右下角的 **R 浮标**唤回（手机可直接点），桌面也可用 <kbd>Shift</kbd>+<kbd>H</kbd>
 - **菜单 `…`**：常驻显示 / 迷你模式 / 暂停采样 / 设置
 - **设置**：布局预设（精简 / 标准 / 全部）、各分区显示开关、宽度与透明度滑条
-- **邀请好友（v1.3.1）**：
+- **邀请好友（v1.4.0）**：
   1. 创建或加入一个同盟，打开「邀请」栏 → 复制 `?room=密钥` 邀请链接发给好友，**对方打开就自动进房，不用输密钥**；
   2. 你的房间没有在对局中时，名单里每个人的「邀请」按钮会把邀请推给对方（`room.invite` → `room.invited`）；
   3. 对方 HUD 顶部弹出横幅 → 点「**立即加入**」直接进你的同盟。
@@ -102,7 +102,8 @@ mod 本体是两个静态文件（`hud.js` + `hud.css`），无构建、无依�
 ```bash
 npm install                 # 只装 devDependency（puppeteer-core）
 node server/index.js        # 在游戏仓库起一个本地服务器（默认 http://127.0.0.1:3000）
-npm test                    # = node test/hud-smoke.mjs [URL]
+npm test                    # = node test/hud-smoke.mjs [URL]，桌面冒烟 40 断言
+npm run test:mobile         # = node test/hud-mobile.mjs [URL]，手机模拟 7 断言（截图到系统临时目录）
 # Windows 以外设置 CHROME_PATH 指向 Chrome 可执行文件
 ```
 
