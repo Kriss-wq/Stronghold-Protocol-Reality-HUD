@@ -37,4 +37,4 @@ curl -s http://127.0.0.1:3000/api/players   # 应返回 {"ok":true,"players":[..
 ## 验证
 
 - `node --test test/lobby-invite.test.js` —— 推送 relay、全部拒绝路径、限流、名单不含密钥（5 例）
-- `node hud-smoke.mjs http://127.0.0.1:3000` —— HUD 侧 34 项断言（含模拟 `room.invited` 横幅与旧服务器降级路径）
+- `node hud-smoke.mjs http://127.0.0.1:3000` —— HUD 侧 40 项断言（含模拟 `room.invited` 横幅与旧服务器降级路径）

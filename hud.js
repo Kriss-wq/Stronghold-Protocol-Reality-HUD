@@ -49,11 +49,13 @@ const AUTHOR = Object.freeze({
   blogLabel: 'reality-blog.asia',
 });
 
-const MOD_VERSION = '1.3.1';
+const MOD_VERSION = '1.4.0';
 
 const DEFAULTS = {
   x: null,               // null = park it on the right edge (computed on first show)
   y: null,
+  rx: null,              // recall pill position (null = bottom-right corner)
+  ry: null,
   width: 380,             // 260 … 720, via the resize grip
   opacity: 0.94,          // 0.35 … 1
   collapsed: false,
@@ -129,7 +131,9 @@ function h(tag, attrs = {}, ...kids) {
     else el.setAttribute(k, v === true ? '' : String(v));
   }
   for (const kid of kids.flat()) {
-    if (kid == null || kid === false) continue;
+    // booleans are never content: a stray `true` argument (buildSection's extraHeadKids — bit
+    // twice: the v1.3.1 log head, the v1.4.0 settings head) renders as visible text
+    if (kid == null || typeof kid === 'boolean') continue;
     el.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
   }
   return el;
@@ -362,7 +366,26 @@ function buildUi() {
     }),
     menuRow('rh-menu-settings', '打开设置', false, () => {
       closeMenu();
-      toggleSection('settings');
+      // 「打开设置」must actually open it: with the default preset the settings section is
+      // switched off AND folded — reveal both, or the menu item does nothing visible
+      const cfg = state.cfg;
+      const changed = !cfg.show.settings || !!cfg.folded.settings;
+      if (!cfg.show.settings) cfg.show.settings = true;
+      cfg.folded.settings = false;
+      if (changed) {
+        applySections();
+        const sec = els.sections.settings;
+        if (sec) {
+          sec.classList.remove('is-folded');
+          const btn = $('.rh-mini[title^="折叠"]', sec);
+          if (btn) btn.textContent = '−';
+          // the body is a scroll container — bring the section into view instead of leaving it
+          // below the fold (always the case on a phone, where the body caps at 58vh)
+          sec.scrollIntoView?.({ block: 'nearest' });
+        }
+        syncToggles();
+        saveConfig();
+      }
     }),
   );
 
@@ -386,7 +409,7 @@ function buildUi() {
         saveConfig();
       }),
       menuBtn,
-      iconBtn('rh-close', '×', '隐藏（Shift+H 唤回）', () => hideOverlay()),
+      iconBtn('rh-close', '×', '隐藏（右下角浮标 / Shift+H 唤回）', () => hideOverlay()),
     ),
     menuItems,
   );
@@ -490,7 +513,7 @@ function buildUi() {
         },
       }),
     ),
-  ], true);
+  ]);
 
   const secAbout = buildSection('about', '关于', [
     h('div', { class: 'rh-about' },
@@ -872,7 +895,11 @@ function renderStatus() {
 
   const online = state.status === 'online';
   const connecting = state.status === 'connecting' || state.status === 'handshaking' || state.status === 'reconnecting';
-  const grade = online ? 0 : connecting ? 1 : 2;
+  // 'connected' (socket open, heartbeat alive, no session — the steady state on the title screen)
+  // is healthy: the game itself counts it as live (title.js, net.js probes). Grade it down only
+  // when a lastError rides along (e.g. a rejected hello — its detail is in the sub line anyway).
+  const live = online || (state.status === 'connected' && !state.lastError);
+  const grade = live ? 0 : connecting ? 1 : 2;
 
   els.dot.className = `rh-dot ${GRADE_CLASS[grade]}`;
   els.dot.title = STATUS_TEXT[state.status] || state.status;
@@ -887,7 +914,7 @@ function renderStatus() {
   if (state.clockOffset) bits.push(`时钟偏移 ${state.clockOffset > 0 ? '+' : ''}${state.clockOffset}ms`);
   if (state.lastError) bits.push(`${state.lastError.code}: ${state.lastError.text}`);
   els.sub.textContent = bits.join(' · ');
-  els.sub.className = `rh-sub ${online ? 'is-ok' : connecting ? 'is-warn' : 'is-bad'}`;
+  els.sub.className = `rh-sub ${live ? 'is-ok' : connecting ? 'is-warn' : 'is-bad'}`;
 
   renderSparkline();
 }
@@ -1594,7 +1621,9 @@ function placeInitial() {
   const x = cfg.x == null ? Math.max(12, vw - rect.width - 16) : cfg.x;
   const y = cfg.y == null ? 16 : cfg.y;
   root.style.left = `${clamp(x, 8, Math.max(8, vw - rect.width - 8))}px`;
-  root.style.top = `${clamp(y, 8, Math.max(8, vh - 80))}px`;
+  // clamp against the panel's real height: a short viewport (phone rotated to landscape) must
+  // keep the whole panel reachable, not just an assumed 80px stub
+  root.style.top = `${clamp(y, 8, Math.max(8, vh - rect.height - 8))}px`;
 }
 
 /**
@@ -1630,14 +1659,18 @@ function enableDrag() {
   let sx = 0, sy = 0, sl = 0, st = 0;
 
   head.addEventListener('pointerdown', (ev) => {
-    if (ev.target.closest('.rh-ibtn') || ev.target.closest('a')) return;
+    // the menu is inside the header: a press on a menu row (or the menu box) is never a drag —
+    // starting one captures the pointer on the header and retargets the click away from the row
+    if (ev.target.closest('.rh-ibtn') || ev.target.closest('a') || ev.target.closest('.rh-menu')) return;
     if (ev.button != null && ev.button !== 0) return;
     dragging = true;
     sx = ev.clientX; sy = ev.clientY;
     sl = root.offsetLeft; st = root.offsetTop;
     root.classList.add('is-dragging');
     head.setPointerCapture?.(ev.pointerId);
-    ev.preventDefault();
+    // touch: `touch-action: none` already blocks scrolling, and per spec cancelling pointerdown
+    // suppresses the compat click of that same tap — nothing here needs it on a touch pointer
+    if (ev.pointerType !== 'touch') ev.preventDefault();
   });
 
   head.addEventListener('pointermove', (ev) => {
@@ -1689,12 +1722,14 @@ function enableDrag() {
   // safety net: a pointerup that lands outside the window would otherwise leave us stuck resizing
   globalThis.addEventListener('pointerup', endResize);
 
-  // keep it on screen when the viewport changes
+  // keep it on screen when the viewport changes (height-aware: rotating to landscape shrinks
+  // the viewport under a panel that may be hundreds of pixels tall)
   globalThis.addEventListener('resize', () => {
     const vw = globalThis.innerWidth, vh = globalThis.innerHeight;
     const maxLeft = Math.max(8, vw - root.offsetWidth - 8);
     root.style.left = `${clamp(root.offsetLeft, 8, maxLeft)}px`;
-    root.style.top = `${clamp(root.offsetTop, 8, Math.max(8, vh - 80))}px`;
+    root.style.top = `${clamp(root.offsetTop, 8, Math.max(8, vh - root.offsetHeight - 8))}px`;
+    placeRecall();
   });
 }
 
@@ -1702,8 +1737,87 @@ function enableDrag() {
 // show / hide
 // ---------------------------------------------------------------------------------------------
 
+/**
+ * A tiny recall pill, the pointer-first way back.
+ *
+ * `hideOverlay()` removes the panel from the DOM, and the only other way back (Shift+H) needs a
+ * keyboard — on a phone a hidden HUD was unreachable until a page reload. The pill appears where
+ * the HUD was last parked, can be dragged out of the way, and restores the panel on tap. It is a
+ * sibling of `.rh-root`, so it carries its own positioning and the same design tokens inline.
+ */
+let recallEl = null;
+
+function buildRecall() {
+  return h('button', {
+    class: 'rh-recall', id: 'rh-recall', type: 'button',
+    title: '唤回 Reality HUD（Shift+H）', 'aria-label': '唤回 Reality HUD',
+    onKeydown: (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); showOverlay(); } },
+  }, 'R');
+}
+
+function showRecall() {
+  if (!recallEl) recallEl = buildRecall();
+  if (!recallEl.isConnected) document.body.append(recallEl);
+  recallEl.hidden = false;
+  placeRecall();
+  if (!state._recallDrag) { enableRecallDrag(); state._recallDrag = true; }
+}
+
+function hideRecall() {
+  if (recallEl) recallEl.hidden = true;
+}
+
+function placeRecall() {
+  if (!recallEl) return;
+  const { cfg } = state;
+  const vw = globalThis.innerWidth, vh = globalThis.innerHeight;
+  const w = recallEl.offsetWidth || 36, ph = recallEl.offsetHeight || 36;
+  const x = cfg.rx == null ? Math.max(12, vw - w - 16) : cfg.rx;
+  const y = cfg.ry == null ? Math.max(12, vh - ph - 20) : cfg.ry;
+  recallEl.style.left = `${clamp(x, 8, Math.max(8, vw - w - 8))}px`;
+  recallEl.style.top = `${clamp(y, 8, Math.max(8, vh - ph - 8))}px`;
+}
+
+/** Drag to move; a drag that never left the pill counts as a tap (pointer capture eats clicks). */
+function enableRecallDrag() {
+  let dragging = false, moved = false, sx = 0, sy = 0, sl = 0, st = 0;
+
+  recallEl.addEventListener('pointerdown', (ev) => {
+    if (ev.button != null && ev.button !== 0) return;
+    dragging = true; moved = false;
+    sx = ev.clientX; sy = ev.clientY;
+    sl = recallEl.offsetLeft; st = recallEl.offsetTop;
+    recallEl.classList.add('is-dragging');
+    recallEl.setPointerCapture?.(ev.pointerId);
+  });
+  recallEl.addEventListener('pointermove', (ev) => {
+    if (!dragging) return;
+    const dx = ev.clientX - sx, dy = ev.clientY - sy;
+    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) moved = true;
+    const vw = globalThis.innerWidth, vh = globalThis.innerHeight;
+    recallEl.style.left = `${clamp(sl + dx, 0, Math.max(0, vw - 40))}px`;
+    recallEl.style.top = `${clamp(st + dy, 0, Math.max(0, vh - 40))}px`;
+  });
+  const end = (ev) => {
+    if (!dragging) return;
+    dragging = false;
+    recallEl.classList.remove('is-dragging');
+    recallEl.releasePointerCapture?.(ev.pointerId);
+    if (moved) {
+      state.cfg.rx = recallEl.offsetLeft;
+      state.cfg.ry = recallEl.offsetTop;
+      saveConfig();
+    } else {
+      showOverlay();
+    }
+  };
+  recallEl.addEventListener('pointerup', end);
+  recallEl.addEventListener('pointercancel', end);
+}
+
 function showOverlay() {
   if (state.mounted) return;
+  hideRecall();
   document.body.append(root);
   state.mounted = true;
   placeInitial();
@@ -1733,6 +1847,7 @@ function hideOverlay() {
   root.remove();
   state.mounted = false;
   stopTimers();
+  showRecall();
 }
 
 function toggleOverlay() {
@@ -1766,7 +1881,7 @@ function watchClientErrors() {
   });
 }
 
-// Shift+H anywhere: bring it back after closing
+// Shift+H anywhere: bring it back after closing (desktop shortcut; on touch there is the recall pill)
 document.addEventListener('keydown', (ev) => {
   if (ev.shiftKey && (ev.key === 'H' || ev.key === 'h')) {
     const t = ev.target;

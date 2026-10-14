@@ -931,10 +931,50 @@
                     transparent 72%, rgba(78, 216, 175, 0.32) 72%, rgba(78, 216, 175, 0.32) 84%, transparent 84%);
 }
 
+/* ---------------------------------------------------------------- touch polish
+   No grey tap flash on Android / iOS, and the panel's inner scrollers never chain-scroll the
+   game page behind them (a phone's rubber-band would otherwise yank the whole document). */
+
+.rh-root,
+.rh-recall { -webkit-tap-highlight-color: transparent; }
+
+.rh-body,
+.rh-log { overscroll-behavior: contain; }
+
+/* ---------------------------------------------------------------- recall pill
+   Sibling of .rh-root, not a child — shown only while the panel is hidden. On a phone there is
+   no Shift+H, so this 36px pill (draggable, tap to restore) is the only way back. */
+
+.rh-recall {
+  position: fixed;
+  z-index: 2147483001;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  font: 700 13px/1 var(--rh-mono, ui-monospace, monospace);
+  color: var(--rh-ok, #4ed8af);
+  background: rgba(12, 15, 14, 0.92);
+  border: 1px solid var(--rh-line, rgba(78, 216, 175, 0.4));
+  border-radius: 50%;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  opacity: 0.75;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.rh-recall:hover,
+.rh-recall:focus-visible { opacity: 1; }
+.rh-recall:active { transform: scale(0.92); }
+.rh-recall.is-dragging { opacity: 1; transition: none; cursor: grabbing; }
+
 /* ---------------------------------------------------------------- narrow / touch / short */
 
 @media (max-width: 560px) {
   .rh-root { width: min(320px, calc(100vw - 20px)); font-size: 13px; }
+  .rh-recall { width: 42px; height: 42px; font-size: 15px; }
   .rh-body { max-height: 58vh; }
   .rh-ibtn { width: 26px; height: 26px; font-size: 14px; }
   .rh-mini { padding: 4px 10px; font-size: 11px; }

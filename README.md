@@ -3,7 +3,7 @@
 > 可拖拽的悬浮窗 mod —— 叠加在 [《卫戍协议：盟约》](https://github.com/sganggs/Stronghold-Protocol)（Stronghold Protocol）游戏页面之上：连接状态、真实延迟曲线、在线人数、本局信息、**免密钥邀请好友**、性能与事件日志，一屏看全。
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-4ed8af.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.3.1-4ed8af.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.4.0-4ed8af.svg)](CHANGELOG.md)
 [![Game version](https://img.shields.io/badge/game-0.1.3%E2%80%930.2.5-8a948f.svg)](#兼容性)
 
 **纯客户端视角**：不修改任何游戏代码，无构建步骤，无运行时依赖，随页面加载即用；游戏更新后照常工作（服务端补丁为可选增强，见下）。
@@ -50,7 +50,7 @@ author is [@xianshi3](https://github.com/xianshi3). The interface is Chinese-fir
 | 上游 Stronghold Protocol `0.1.3` – `0.2.5` | ✅ 全部基础功能（HUD 只使用游戏公开的 `__SP__` 接口与公开 GET 端点） |
 | 在线名单 + 一键邀请 | 需要服务端打上可选补丁（[`server-patch/`](docs/server-patch.md)）；**未打补丁时 HUD 自动降级**——名单栏显示提示后停止请求，复制邀请链接照常可用 |
 | 未装 HUD 的原版玩家 | ✅ 完全不受影响：`room.invited` 推送对原版客户端是未知消息，会被静默忽略 |
-| 安卓端（WebView 壳） | ✅ HUD 随页面加载，触屏可拖动 |
+| 安卓端（WebView 壳） | ✅ HUD 随页面加载，触屏可拖动；隐藏后点右下角 **R 浮标**唤回（v1.4.0，手机无键盘也不怕） |
 | 系统 / 浏览器 | 桌面 Chrome / Edge / Firefox 优先；移动端可用（有触屏适配） |
 
 > mod 加载器（游戏自带 `public/js/mods.js`）在启动时扫描 `public/mods/index.json` 与各文件夹的 `mod.json`，自动挂载，无需改游戏代码。
@@ -66,7 +66,7 @@ author is [@xianshi3](https://github.com/xianshi3). The interface is Chinese-fir
 ## 使用
 
 - **拖动**：按住标题栏移动；位置、宽度、折叠、透明度记在 `localStorage`，下次打开还在原地
-- **折叠**：标题栏 `—`；**隐藏**：`×`，之后 <kbd>Shift</kbd>+<kbd>H</kbd> 唤回
+- **折叠**：标题栏 `—`；**隐藏**：`×`，之后点右下角的 **R 浮标**唤回（手机可直接点），桌面也可用 <kbd>Shift</kbd>+<kbd>H</kbd>
 - **菜单 `…`**：常驻显示 / 迷你模式 / 暂停采样 / 设置
 - **设置**：布局预设（精简 / 标准 / 全部）、各分区显示开关、宽度与透明度滑条
 - **邀请好友（v1.3.1）**：
@@ -97,7 +97,7 @@ systemctl restart stronghold        # 重启后生效
 
 ## 开发与测试
 
-mod 本体是两个静态文件（`hud.js` + `hud.css`），无构建、无依赖。冒烟测试用 puppeteer 驱动真实页面，34 项断言（挂载、折叠、菜单、邀请栏、模拟邀请横幅、无页面错误……）：
+mod 本体是两个静态文件（`hud.js` + `hud.css`），无构建、无依赖。冒烟测试用 puppeteer 驱动真实页面，40 项断言（挂载、折叠、菜单、真实指针点按菜单行、邀请栏、模拟邀请横幅、隐藏唤回浮标、无页面错误……）：
 
 ```bash
 npm install                 # 只装 devDependency（puppeteer-core）

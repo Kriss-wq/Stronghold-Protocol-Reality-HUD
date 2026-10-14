@@ -2,6 +2,25 @@
 
 All notable changes to this project. Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/).
 
+## [1.4.0] - 2026-10-14
+
+### Added
+
+- **Recall pill (mobile-friendly)**: after hiding the panel (`×`), a 36px `R` pill appears in the bottom-right corner — tap it to bring the HUD back. On a phone there is no Shift+H, so a hidden HUD used to be unreachable until a page reload. The pill is draggable (position remembered); desktop Shift+H still works.
+
+### Fixed
+
+- **Menu rows were unclickable** (一直存在的 bug): pressing a menu row started a header drag, which captured the pointer on the header and retargeted the click away — 固定采样 / 暂停采样 / 迷你模式 / 打开设置 all silently did nothing with a real pointer (the old synthetic-`.click()` tests bypassed it). Dragging now only starts from the header's blank areas.
+- **「打开设置」现在真的会打开**: with the default preset the settings section is switched off *and* folded, so the row used to toggle fold state on a hidden section — no visible effect. The row now reveals, unfolds and scrolls the section into view (the body is a scroll container; below the fold on phones at 58vh).
+- **Red 「已连接」 on the title screen**: the steady `connected` state (socket open, heartbeat alive, no session — what the title screen sits in forever) graded as bad. It now grades green like the game's own indicator; a `lastError` (e.g. a rejected hello) still grades it down.
+- **Panel bottom off-screen after rotating to landscape**: position clamping assumed an 80px stub; it now clamps against the panel's real height, so a short viewport keeps the whole panel reachable.
+- **Stray "TRUE" in the 设置 section header**: another `buildSection` boolean argument — the v1.3.1 log-head twin, hidden behind the default-off settings section. `h()` now refuses boolean children outright, and the smoke walks every section header for stray boolean text, so this class of mistake cannot land again.
+
+### Changed
+
+- Touch polish: no grey tap flash on Android / iOS; the panel's inner scrollers no longer chain-scroll the game page behind them (`overscroll-behavior: contain`); the pill grows to 42px on narrow screens for an easier tap target. Header drag no longer cancels `pointerdown` on touch pointers (`touch-action: none` already blocks scrolling, and per spec cancelling it suppresses the compat click of that tap).
+- Smoke suite grew 36 → 39 assertions: real-pointer menu rows, 打开设置 reveal, hide → recall pill → restore.
+
 ## [1.3.1] - 2026-10-13
 
 ### Fixed

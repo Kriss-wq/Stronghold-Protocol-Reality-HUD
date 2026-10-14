@@ -46,7 +46,7 @@ const api = await page.evaluate(() => ({
   author: globalThis.__REALITY_HUD__?.author,
 }));
 check("面板已挂载", api.mounted);
-check("版本 1.3.1", api.ver === "1.3.1", String(api.ver));
+check("版本 1.4.0", api.ver === "1.4.0", String(api.ver));
 check("作者署名 Reality", api.author === "Reality", String(api.author));
 
 // --- header is down to three buttons ---------------------------------------------------------
@@ -122,6 +122,36 @@ const paused = await page.evaluate(() => ({
 }));
 check("菜单能暂停采样", paused.cfg === true, paused.perf);
 await page.evaluate(() => document.querySelector("#rh-menu-pause").click());
+await settle();
+
+// v1.4.0: a real pointer press on a menu row must reach the row — the header drag used to start
+// on any press that was not a header button, capturing the pointer on the header and retargeting
+// the click away, so every menu row was dead (the synthetic .click() above bypassed that bug)
+await page.click("#rh-menu-mini");
+await settle();
+check("真实点按菜单行（迷你开）", await page.evaluate(() => globalThis.__REALITY_HUD__.state.cfg.mini === true));
+await page.click("#rh-menu-mini");
+await settle();
+check("真实点按菜单行（迷你关）", await page.evaluate(() => globalThis.__REALITY_HUD__.state.cfg.mini === false));
+
+// 打开设置 must actually open it: the default preset has the section switched off AND folded
+await page.click("#rh-menu-settings");
+await settle();
+const settingsShown = await page.evaluate(() => {
+  const sec = document.querySelector("#rh-sec-settings");
+  return !!sec && !sec.hidden && globalThis.__REALITY_HUD__.state.cfg.show.settings === true;
+});
+check("打开设置真正显示设置栏", settingsShown);
+
+// regression for the buildSection boolean misuse (log head in v1.3.1, settings head in v1.4.0):
+// a stray `true` argument used to render as visible text in the section header
+const strayHeads = await page.evaluate(() => [...document.querySelectorAll(".rh-sec-head")]
+  .map((h) => ({ label: h.querySelector(".rh-sec-label")?.textContent || "", stray: [...h.childNodes].some((n) => n.nodeType === 3 && /^true$/i.test(n.textContent.trim())) }))
+  .filter((h) => h.stray));
+check("分区标题无残留布尔文本", strayHeads.length === 0, JSON.stringify(strayHeads));
+
+// that row closes the menu itself; reopen it so 「点击外部关闭菜单」 below starts from open
+await page.click("#rh-menu-btn");
 await settle();
 
 // clicking outside closes the menu
@@ -265,6 +295,23 @@ const cost = await page.evaluate(async () => {
 });
 check("单次更新 < 1ms", cost.perUpdate < 1, `${cost.perUpdate.toFixed(3)}ms`);
 check("平均帧间隔正常", cost.avgFrameMs < 20, `${cost.avgFrameMs.toFixed(1)}ms (~${cost.fps}fps)`);
+
+// hide → the recall pill appears → tap it → the panel is back (the phone's way home, v1.4.0)
+await page.click("#rh-close");
+await new Promise((r) => setTimeout(r, 300));
+const afterHide = await page.evaluate(() => ({
+  mounted: globalThis.__REALITY_HUD__.state.mounted,
+  pill: !!document.querySelector("#rh-recall") && !document.querySelector("#rh-recall").hidden,
+}));
+check("隐藏后浮标出现", !afterHide.mounted && afterHide.pill, JSON.stringify(afterHide));
+await page.click("#rh-recall");
+await new Promise((r) => setTimeout(r, 400));
+const afterRecall = await page.evaluate(() => ({
+  mounted: globalThis.__REALITY_HUD__.state.mounted,
+  pillHidden: document.querySelector("#rh-recall")?.hidden !== false,
+}));
+check("点浮标唤回面板", afterRecall.mounted && afterRecall.pillHidden, JSON.stringify(afterRecall));
+
 check("无页面错误", errors.length === 0, errors.slice(0, 2).join(" | "));
 
 await page.evaluate(() => { if (!globalThis.__REALITY_HUD__.state.mounted) globalThis.__REALITY_HUD__.show(); });
