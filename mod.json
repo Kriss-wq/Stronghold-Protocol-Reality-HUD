@@ -6,7 +6,7 @@
   "author": "Reality",
   "authorUrl": "https://github.com/xianshi3",
   "homepage": "https://reality-blog.asia",
-  "repository": "https://github.com/xianshi3/reality-hud",
+  "repository": "https://github.com/xianshi3/Stronghold-Protocol-Reality-HUD",
   "license": "MIT",
   "entry": "hud.js",
   "style": "hud.css"

@@ -15,10 +15,10 @@
   "homepage": "https://reality-blog.asia",
   "repository": {
     "type": "git",
-    "url": "https://github.com/xianshi3/reality-hud.git"
+    "url": "https://github.com/xianshi3/Stronghold-Protocol-Reality-HUD.git"
   },
   "bugs": {
-    "url": "https://github.com/xianshi3/reality-hud/issues"
+    "url": "https://github.com/xianshi3/Stronghold-Protocol-Reality-HUD/issues"
   },
   "type": "module",
   "scripts": {

@@ -1,6 +1,6 @@
-# Reality HUD
+# Stronghold-Protocol-Reality-HUD
 
-> 可拖拽的悬浮窗 mod —— 叠加在 [《卫戍协议：盟约》](https://github.com/sganggs/Stronghold-Protocol)（Stronghold Protocol）游戏页面之上：连接状态、真实延迟曲线、在线人数、本局信息、**免密钥邀请好友**、性能与事件日志，一屏看全。
+> **Reality HUD** —— 可拖拽的悬浮窗 mod，叠加在 [《卫戍协议：盟约》](https://github.com/sganggs/Stronghold-Protocol)（Stronghold Protocol，**原项目 / Upstream**）游戏页面之上：连接状态、真实延迟曲线、在线人数、本局信息、**免密钥邀请好友**、性能与事件日志，一屏看全。
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-4ed8af.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-1.4.0-4ed8af.svg)](CHANGELOG.md)
@@ -12,6 +12,7 @@
 |---|---|
 | **作者 / Author** | **Reality** |
 | **GitHub** | <https://github.com/xianshi3> (`@xianshi3`) |
+| **原项目 / Upstream** | [sganggs/Stronghold-Protocol](https://github.com/sganggs/Stronghold-Protocol) —— 《卫戍协议：盟约》浏览器游戏（Arknights 粉丝复刻，GPL-3.0-or-later） |
 | **博客 / Blog** | <https://reality-blog.asia> |
 | **许可 / License** | MIT（见 [`LICENSE`](LICENSE)） |
 
@@ -47,7 +48,7 @@ author is [@xianshi3](https://github.com/xianshi3). The interface is Chinese-fir
 
 | 场景 | 支持情况 |
 |---|---|
-| 上游 Stronghold Protocol `0.1.3` – `0.2.5` | ✅ 全部基础功能（HUD 只使用游戏公开的 `__SP__` 接口与公开 GET 端点） |
+| [上游原项目 Stronghold Protocol](https://github.com/sganggs/Stronghold-Protocol) `0.1.3` – `0.2.5` | ✅ 全部基础功能（HUD 只使用游戏公开的 `__SP__` 接口与公开 GET 端点） |
 | 在线名单 + 一键邀请 | 需要服务端打上可选补丁（[`server-patch/`](docs/server-patch.md)）；**未打补丁时 HUD 自动降级**——名单栏显示提示后停止请求，复制邀请链接照常可用 |
 | 未装 HUD 的原版玩家 | ✅ 完全不受影响：`room.invited` 推送对原版客户端是未知消息，会被静默忽略 |
 | 安卓端（WebView 壳） | ✅ HUD 随页面加载，触屏可拖动；隐藏后点右下角 **R 浮标**唤回（v1.4.0，手机无键盘也不怕） |
@@ -59,7 +60,7 @@ author is [@xianshi3](https://github.com/xianshi3). The interface is Chinese-fir
 
 三种方式任选其一：
 
-1. **克隆 / 下载本仓库**，把整个文件夹放进游戏的 `public/mods/` 下（文件夹名保持 `reality-hud`），刷新页面；
+1. **克隆 / 下载本仓库**（`git clone https://github.com/xianshi3/Stronghold-Protocol-Reality-HUD.git`），把文件夹放进游戏的 `public/mods/` 下并**改名为 `reality-hud`**（mod id，加载器按它索引），刷新页面；
 2. 直接下载 [Releases](../../releases) 的压缩包解压到 `public/mods/`；
 3. 临时体验：在游戏 URL 后加 `?mod=reality-hud`（只加载它）或 `?nomods=reality-hud`（不加载它）。
 

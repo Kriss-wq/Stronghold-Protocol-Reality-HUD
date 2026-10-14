@@ -5,8 +5,8 @@
 ## 开发环境
 
 ```bash
-git clone https://github.com/xianshi3/reality-hud.git
-cd reality-hud
+git clone https://github.com/xianshi3/Stronghold-Protocol-Reality-HUD.git
+cd Stronghold-Protocol-Reality-HUD
 npm install                      # 只有 devDependency（puppeteer-core），mod 本体无任何依赖
 ```
 
@@ -15,9 +15,9 @@ npm install                      # 只有 devDependency（puppeteer-core），mo
 ## 跑测试
 
 ```bash
-cd ../Stronghold-Protocol        # 一个游戏仓库的检出
+cd ../Stronghold-Protocol        # 一个游戏仓库的检出（原项目：https://github.com/sganggs/Stronghold-Protocol）
 node server/index.js             # 本地起服，默认 http://127.0.0.1:3000
-cd ../reality-hud
+cd ../Stronghold-Protocol-Reality-HUD
 npm test                         # = node test/hud-smoke.mjs [URL]
 # Windows 以外请先设置 CHROME_PATH 指向 Chrome 可执行文件
 ```

@@ -6,7 +6,7 @@ Reality HUD 的核心功能（延迟、服务状态、本局、性能、日志�
 
 ## 应用
 
-补丁基于上游 **v0.2.5** 生成（`server-patch/reality-hud-invite.patch`，共 4 个代码文件 + 1 个文档）：
+补丁基于上游 [Stronghold Protocol](https://github.com/sganggs/Stronghold-Protocol) **v0.2.5** 生成（`server-patch/reality-hud-invite.patch`，共 4 个代码文件 + 1 个文档）：
 
 ```bash
 cd Stronghold-Protocol            # 游戏仓库，v0.2.5
