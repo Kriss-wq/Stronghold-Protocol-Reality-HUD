@@ -4,10 +4,14 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-10-15
+
 ### Changed
 
 - The optional server patch is rebased on upstream **v0.2.6**: `server-patch/reality-hud-invite.patch` was regenerated against the 0.2.6 tree and `git apply --check` verified clean (same 4 code files + 1 doc).
 - README compatibility statement now covers game versions `0.1.3` – `0.2.6`: the production server (patched fork + this HUD) was upgraded to v0.2.6 on 2026-10-15 with the smoke suite passing 40/40 against it.
+- **更小的悬浮窗**: the collapsed strip (fold state) is smaller everywhere — ~124×28px → **119×25px** — and shrinks further on phones (≤560px) to **71×24px**: the title shortens to `R HUD`, and the dot, paddings and fold button shrink with it. The recall pill is back to 36px on a narrow viewport (the 42px of 1.4.0 felt too big on a phone); an invisible ring around it keeps the tap target ≈48px for fingers.
+- Smoke fixes and growth 40 → 43 assertions: phone-width collapsed-strip and pill sizes are checked, and `hud-open.png` is now captured with the panel actually expanded (it used to catch the collapsed strip).
 
 ## [1.4.0] - 2026-10-14
 

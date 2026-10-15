@@ -49,7 +49,7 @@ const AUTHOR = Object.freeze({
   blogLabel: 'reality-blog.asia',
 });
 
-const MOD_VERSION = '1.4.0';
+const MOD_VERSION = '1.4.1';
 
 const DEFAULTS = {
   x: null,               // null = park it on the right edge (computed on first show)
