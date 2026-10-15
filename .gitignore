@@ -2,3 +2,7 @@ node_modules/
 *.log
 .DS_Store
 Thumbs.db
+
+# smoke-test screenshots written by test/hud-smoke.mjs
+hud-open.png
+hud-collapsed.png
