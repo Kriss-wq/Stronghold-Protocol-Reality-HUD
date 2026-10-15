@@ -405,7 +405,7 @@ function damageEffectType(key, raw = {}) {
 function effectDurationMs(raw, nowMs = now()) {
   const duration = finiteNumber(raw?.durationMs, raw?.duration_ms);
   if (duration != null) return duration >= 1000 ? duration : duration * 1000;
-  const seconds = finiteNumber(raw?.seconds, raw?.durationSec, raw?.durationSeconds);
+  const seconds = finiteNumber(raw?.seconds, raw?.duration, raw?.durationSec, raw?.durationSeconds);
   if (seconds != null) return Math.max(0, seconds * 1000);
   const until = finiteNumber(raw?.untilMs, raw?.expiresAt, raw?.expireAt);
   if (until != null && until > nowMs - 86400000) return Math.max(0, until - nowMs);
