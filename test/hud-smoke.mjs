@@ -49,6 +49,25 @@ check("面板已挂载", api.mounted);
 check("版本 1.5.0", api.ver === "1.5.0", String(api.ver));
 check("作者署名 Reality", api.author === "Reality", String(api.author));
 
+// v1.4.2: no brand text in the chrome, 邀请 leads the sections, the footer links are icons
+const chrome = await page.evaluate(() => {
+  const root = document.querySelector("#reality-hud");
+  return {
+    title: root.querySelector(".rh-title")?.textContent,
+    visSecs: [...root.querySelectorAll(".rh-body .rh-sec")].filter((s) => !s.hidden).slice(0, 4).map((s) => s.id).join(","),
+    footLinks: [...root.querySelectorAll(".rh-foot a")].map((a) => ({ href: a.getAttribute("href"), icon: !!a.querySelector(".rh-icon") })),
+    footText: root.querySelector(".rh-foot")?.textContent || "",
+  };
+});
+check("标题为 R HUD（无品牌字）", chrome.title === "R HUD", String(chrome.title));
+check("邀请区块在最前", chrome.visSecs === "rh-sec-invite,rh-sec-match,rh-sec-server,rh-sec-perf", chrome.visSecs);
+check("页脚两个图标链接（仓库 + 博客）", chrome.footLinks.length === 2
+  && chrome.footLinks.every((l) => l.icon)
+  && chrome.footLinks.some((l) => l.href.includes("Stronghold-Protocol-Reality-HUD"))
+  && chrome.footLinks.some((l) => l.href.includes("reality-blog"))
+  && !/reality-blog\.asia/.test(chrome.footText),
+  JSON.stringify(chrome.footLinks));
+
 // --- header is down to three buttons ---------------------------------------------------------
 const btns = await page.evaluate(() => [...document.querySelectorAll(".rh-head-actions .rh-ibtn")].map((b) => b.id));
 check("标题栏只剩 3 个按钮", btns.length === 3, btns.join(","));
@@ -319,8 +338,40 @@ await page.click("#rh-fold");
 await new Promise((r) => setTimeout(r, 500));
 await page.screenshot({ path: "hud-collapsed.png", clip: { x: 1000, y: 0, width: 440, height: 200 } });
 await page.evaluate(() => { if (!globalThis.__REALITY_HUD__.state.mounted) globalThis.__REALITY_HUD__.show(); });
+// the fold click above left the panel collapsed — expand again so hud-open.png really shows it open
+if (await page.evaluate(() => document.querySelector("#reality-hud").classList.contains("is-collapsed"))) {
+  await page.click("#rh-fold");
+}
 await new Promise((r) => setTimeout(r, 600));
 await page.screenshot({ path: "hud-open.png", clip: { x: 820, y: 0, width: 620, height: 1000 } });
+
+// phone widths (v1.4.1): the collapsed strip is the resting state — tiny; the pill is 36px
+// (was 42px) and an invisible ring keeps its tap target ≈48px
+await page.setViewport({ width: 390, height: 844 });
+await settle();
+await page.evaluate(() => { if (!globalThis.__REALITY_HUD__.state.mounted) globalThis.__REALITY_HUD__.show(); });
+if (!(await page.evaluate(() => document.querySelector("#reality-hud").classList.contains("is-collapsed")))) {
+  await page.click("#rh-fold");
+  await settle();
+}
+const phoneStrip = await page.evaluate(() => {
+  const r = document.querySelector("#reality-hud").getBoundingClientRect();
+  return { w: Math.round(r.width), h: Math.round(r.height) };
+});
+check("手机上折叠条更小", phoneStrip.w <= 90 && phoneStrip.h <= 25, `${phoneStrip.w}x${phoneStrip.h}px`);
+await page.click("#rh-fold");
+await settle();
+await page.click("#rh-close");
+await new Promise((r) => setTimeout(r, 300));
+const phonePill = await page.evaluate(() => {
+  const p = document.querySelector("#rh-recall");
+  const r = p.getBoundingClientRect();
+  return { w: Math.round(r.width), h: Math.round(r.height), visible: !p.hidden };
+});
+check("手机上浮标 36px", phonePill.visible && phonePill.w === 36 && phonePill.h === 36, `${phonePill.w}x${phonePill.h}px`);
+await page.click("#rh-recall");
+await new Promise((r) => setTimeout(r, 400));
+check("手机上点浮标仍能唤回", await page.evaluate(() => globalThis.__REALITY_HUD__.state.mounted));
 
 const failed = results.filter((r) => !r.pass);
 console.log(`\n===== ${results.length - failed.length}/${results.length} passed =====`);

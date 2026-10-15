@@ -202,7 +202,8 @@
 }
 
 .rh-root.is-collapsed .rh-head {
-  padding: 4px 6px 4px 8px;
+  gap: 5px;
+  padding: 3px 5px 3px 7px;
   border-bottom: none;
   border-radius: 10px;
 }
@@ -211,7 +212,7 @@
 .rh-root.is-collapsed .rh-dot { width: 7px; height: 7px; }
 /* the version chip is noise once collapsed — it comes back on expand */
 .rh-root.is-collapsed .rh-ver { display: none; }
-.rh-root.is-collapsed .rh-ibtn { width: 18px; height: 18px; font-size: 11px; }
+.rh-root.is-collapsed .rh-ibtn { width: 17px; height: 17px; font-size: 11px; }
 /* while collapsed only the fold button is meaningful */
 .rh-root.is-collapsed .rh-ibtn:not(#rh-fold) { display: none; }
 
@@ -975,6 +976,11 @@
 .rh-about-meta .rh-link { color: var(--text-lo, #8a948f); }
 .rh-link:hover { text-decoration: underline; }
 
+/* v1.4.2 — the footer links are icons: quieter than text, colour on hover */
+.rh-icon-link { display: inline-flex; align-items: center; color: var(--text-lo, #8a948f); }
+.rh-icon-link:hover { color: var(--rh-ok, #4ed8af); text-decoration: none; }
+.rh-icon { width: 13px; height: 13px; display: block; }
+
 /* resize grip — bottom-right corner */
 .rh-grip {
   position: absolute;
@@ -1027,12 +1033,19 @@
 .rh-recall:focus-visible { opacity: 1; }
 .rh-recall:active { transform: scale(0.92); }
 .rh-recall.is-dragging { opacity: 1; transition: none; cursor: grabbing; }
+/* v1.4.1: the circle stays small — this invisible ring keeps the tap target ≈48px for fingers */
+.rh-recall::after { content: ''; position: absolute; inset: -6px; border-radius: 50%; }
 
 /* ---------------------------------------------------------------- narrow / touch / short */
 
 @media (max-width: 560px) {
   .rh-root { width: min(320px, calc(100vw - 20px)); font-size: 13px; }
-  .rh-recall { width: 42px; height: 42px; font-size: 15px; }
+  /* v1.4.1 — on a phone the collapsed strip is the resting state; keep it tiny: dot + R HUD + fold */
+  .rh-root.is-collapsed .rh-head { gap: 4px; padding: 2px 4px 2px 6px; }
+  .rh-root.is-collapsed .rh-title { font-size: 9px; letter-spacing: 0.05em; }
+  .rh-root.is-collapsed .rh-dot { width: 6px; height: 6px; }
+  .rh-root.is-collapsed .rh-ibtn { width: 18px; height: 18px; font-size: 12px; }
+  .rh-recall { width: 36px; height: 36px; font-size: 13px; }
   .rh-body { max-height: 58vh; }
   .rh-ibtn { width: 26px; height: 26px; font-size: 14px; }
   .rh-mini { padding: 4px 10px; font-size: 11px; }

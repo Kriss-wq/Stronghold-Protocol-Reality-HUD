@@ -7,6 +7,26 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 - 新增独立「干员伤害统计」窗口：实时显示本回合 / 全局伤害、伤害类型、增益减益类型与持续时间。
 - 兼容 `m.unitStats`、`m.field`、`b.start`、`b.ev`、`b.result`、`m.result` 等新旧战斗帧；旧协议没有来源 id 时显示未归属伤害。
 
+## [Unreleased]
+
+## [1.4.2] - 2026-10-15
+
+### Changed
+
+- **邀请最前**: the panel now runs 邀请 → 本局 → 服务 → 性能 → 事件日志 (was 服务 → 本局 → 邀请 → …), so the actionable part sits right under the latency strip; the settings toggle list follows the same order.
+- **去品牌字**: the panel chrome no longer prints "REALITY HUD" — the header, the collapsed strip, the footer note and the About role line all read `R HUD`, and the recall pill's tooltip follows. The mobile-only `R HUD` swap is gone because `R HUD` is the title everywhere (the desktop collapsed strip shrinks along with it).
+- **页脚图标**: the footer's two link texts (GitHub profile, blog address) become two small inline SVG icons — GitHub mark → the repository, globe → the blog; both keep tooltips and open in a new tab. The About section's GitHub row now points at the repository as well. `authorDetail` gains `repo`/`repoLabel`; `links` gains `repo`.
+- Smoke grew 43 → 46: the `R HUD` title, the 邀请-first section order and the footer icon links are asserted.
+
+## [1.4.1] - 2026-10-15
+
+### Changed
+
+- The optional server patch is rebased on upstream **v0.2.6**: `server-patch/reality-hud-invite.patch` was regenerated against the 0.2.6 tree and `git apply --check` verified clean (same 4 code files + 1 doc).
+- README compatibility statement now covers game versions `0.1.3` – `0.2.6`: the production server (patched fork + this HUD) was upgraded to v0.2.6 on 2026-10-15 with the smoke suite passing 40/40 against it.
+- **更小的悬浮窗**: the collapsed strip (fold state) is smaller everywhere — ~124×28px → **119×25px** — and shrinks further on phones (≤560px) to **71×24px**: the title shortens to `R HUD`, and the dot, paddings and fold button shrink with it. The recall pill is back to 36px on a narrow viewport (the 42px of 1.4.0 felt too big on a phone); an invisible ring around it keeps the tap target ≈48px for fingers.
+- Smoke fixes and growth 40 → 43 assertions: phone-width collapsed-strip and pill sizes are checked, and `hud-open.png` is now captured with the panel actually expanded (it used to catch the collapsed strip).
+
 ## [1.4.0] - 2026-10-14
 
 ### Added
