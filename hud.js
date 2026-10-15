@@ -248,6 +248,7 @@ const state = {
     round: null,
     battleId: null,
     units: new Map(),
+    players: new Map(),
     teamEffects: new Map(),
     unattributed: { current: 0, total: 0, currentTypes: {}, totalTypes: {} },
     attackSources: new Map(), // target id -> { source id, at }
@@ -387,6 +388,7 @@ function ensureDamageUnit(raw, defaults = {}) {
   if (merged.kind != null) rec.kind = String(merged.kind);
   if (merged.side != null) rec.side = String(merged.side);
   if (merged.ownerId != null) rec.ownerId = String(merged.ownerId);
+  if (rec.ownerId) ensureDamagePlayer({ playerId: rec.ownerId, name: merged.ownerName });
   if (rec.name == null) rec.name = rec.id || rec.defId || key;
   return rec;
 }
@@ -465,16 +467,71 @@ function resetDamageRound(round) {
   }
   state.damage.unattributed.current = 0;
   state.damage.unattributed.currentTypes = emptyDamageTypes();
+  for (const player of state.damage.players.values()) {
+    player.current = 0;
+    player.currentTypes = emptyDamageTypes();
+    player.reported = Object.create(null);
+  }
 }
 
 function resetDamageSession() {
   state.damage.round = null;
   state.damage.battleId = null;
   state.damage.units.clear();
+  state.damage.players.clear();
   state.damage.teamEffects.clear();
   state.damage.attackSources.clear();
   state.damage.unattributed = { current: 0, total: 0, currentTypes: emptyDamageTypes(), totalTypes: emptyDamageTypes() };
   scheduleRender('damage');
+}
+
+function ensureDamagePlayer(raw, defaults = {}) {
+  const source = raw && typeof raw === 'object' ? raw : {};
+  const id = String(source.playerId ?? source.id ?? defaults.playerId ?? defaults.id ?? '');
+  if (!id) return null;
+  let player = state.damage.players.get(id);
+  if (!player) {
+    player = { id, name: id, current: 0, total: 0, currentTypes: emptyDamageTypes(), totalTypes: emptyDamageTypes(), reported: Object.create(null) };
+    state.damage.players.set(id, player);
+  }
+  const name = source.name ?? defaults.name;
+  if (name != null && String(name).trim()) player.name = String(name);
+  return player;
+}
+
+function updateDamagePlayers(rawPlayers) {
+  if (!Array.isArray(rawPlayers)) return;
+  for (const raw of rawPlayers) {
+    if (!raw || typeof raw !== 'object') continue;
+    const player = ensureDamagePlayer(raw);
+    if (!player) continue;
+    const stats = raw.stats && typeof raw.stats === 'object' ? raw.stats : raw;
+    const reported = finiteNumber(stats.damage, stats.dmg, stats.damageDealt, stats.dealt);
+    if (reported == null || reported < 0) continue;
+    const key = `player:${state.damage.round ?? 'match'}`;
+    const prev = player.reported[key] ?? 0;
+    if (reported >= prev) {
+      const before = player.current;
+      if (player.current < reported) {
+        player.current = reported;
+        player.total += Math.max(0, reported - before);
+      }
+      player.reported[key] = reported;
+    }
+  }
+  scheduleRender('damage');
+}
+
+function recordPlayerDamage(ownerId, amount, type) {
+  const player = ensureDamagePlayer({ playerId: ownerId });
+  if (!player) return;
+  const n = Number(amount);
+  if (!Number.isFinite(n) || n <= 0) return;
+  const key = normalizeDamageType(type);
+  player.current += n;
+  player.total += n;
+  player.currentTypes[key] = (player.currentTypes[key] || 0) + n;
+  player.totalTypes[key] = (player.totalTypes[key] || 0) + n;
 }
 
 function addDamageToBucket(bucket, amount, type) {
@@ -498,6 +555,7 @@ function recordDamage(source, amount, type) {
     rec.total += n;
     rec.currentTypes[key] = (rec.currentTypes[key] || 0) + n;
     rec.totalTypes[key] = (rec.totalTypes[key] || 0) + n;
+    recordPlayerDamage(rec.ownerId, n, key);
   } else addDamageToBucket(state.damage.unattributed, n, type);
   scheduleRender('damage');
 }
@@ -533,11 +591,14 @@ function mergeReportedDamage(raw, rec, sourceKey = 'stats') {
   }
 }
 
-function updateDamageUnits(rawUnits, sourceKey = 'frame') {
+function updateDamageUnits(rawUnits, sourceKey = 'frame', owner = {}) {
   if (!Array.isArray(rawUnits)) return;
   for (const raw of rawUnits) {
     if (!raw || typeof raw !== 'object') continue;
-    const rec = ensureDamageUnit(raw, sourceKey.startsWith('result') || sourceKey === 'unitStats' ? { kind: 'op', side: 'ally' } : {});
+    const rec = ensureDamageUnit(raw, {
+      ...(sourceKey.startsWith('result') || sourceKey === 'unitStats' ? { kind: 'op', side: 'ally' } : {}),
+      ...(owner.playerId ? { ownerId: owner.playerId } : {}),
+    });
     mergeReportedDamage(raw, rec, sourceKey);
   }
   scheduleRender('damage');
@@ -651,7 +712,10 @@ function parseDamageFrame(msg) {
   if (Array.isArray(msg.effects)) parseTeamEffects(msg.effects);
   if (msg.spec) {
     const players = Array.isArray(msg.spec.players) ? msg.spec.players : [];
-    for (const player of players) updateDamageUnits(player?.units || player?.board || [], 'battle-spec');
+    for (const player of players) {
+      ensureDamagePlayer(player);
+      updateDamageUnits(player?.units || player?.board || [], 'battle-spec', player);
+    }
   }
   parseBattleEvents(msg);
 }
@@ -659,9 +723,11 @@ function parseDamageFrame(msg) {
 function parseResultDamage(msg) {
   const result = msg?.result && typeof msg.result === 'object' ? msg.result : msg;
   for (const player of Array.isArray(result?.players) ? result.players : []) {
-    updateDamageUnits(player?.unitStats || [], 'result');
+    ensureDamagePlayer(player);
+    updateDamagePlayers([player]);
+    updateDamageUnits(player?.unitStats || [], 'result', player);
     const units = player?.units || player?.lineup || [];
-    updateDamageUnits(units, 'result-units');
+    updateDamageUnits(units, 'result-units', player);
     if (player?.stats?.dmgDealt != null) {
       // Keep team-level result visible as unattributed when no per-operator stats exist.
       if (!Array.isArray(player.unitStats) || !player.unitStats.length) {
@@ -829,12 +895,13 @@ function buildDamageWindow() {
     h('div', { class: 'rh-head-actions' }, fold, close),
   );
   const summary = h('div', { class: 'rh-damage-summary', id: 'rh-damage-summary', text: '等待战斗数据…' });
+  const players = h('div', { class: 'rh-damage-players', id: 'rh-damage-players' });
   const table = h('div', { class: 'rh-damage-table', id: 'rh-damage-table' });
   const effects = h('div', { class: 'rh-damage-team-effects', id: 'rh-damage-team-effects' });
   const foot = h('div', { class: 'rh-damage-foot', text: '本回合 / 全局 · 伤害类型 · 增益/减益持续时间' });
-  damageRoot.append(head, summary, table, effects, foot);
+  damageRoot.append(head, summary, players, table, effects, foot);
   if (state.cfg.damageWindow.collapsed) damageRoot.classList.add('is-collapsed');
-  damageEls = { head, fold, round: $('#rh-damage-round', damageRoot), summary, table, effects, foot };
+  damageEls = { head, fold, round: $('#rh-damage-round', damageRoot), summary, players, table, effects, foot };
   enableDamageWindowDrag();
   return damageRoot;
 }
@@ -869,6 +936,20 @@ function renderDamage() {
   damageEls.summary.textContent = d.round == null
     ? '等待战斗事件；进入战斗后这里会实时更新。'
     : `本回合 ${formatDamageNumber(allCurrent)} · 全局 ${formatDamageNumber(allTotal)} · ${rows.length} 名干员`;
+  const players = [...d.players.values()].sort((a, b) => b.current - a.current || b.total - a.total || a.name.localeCompare(b.name, 'zh'));
+  if (!players.length) {
+    damageEls.players.replaceChildren();
+  } else {
+    const playerHead = h('div', { class: 'rh-damage-player-row rh-damage-player-head' },
+      h('span', { text: '玩家伤害' }), h('span', { text: '本回合' }), h('span', { text: '全局累计' }), h('span', { text: '类型' }));
+    const playerRows = players.map((player) => h('div', { class: `rh-damage-player-row ${player.current > 0 ? 'is-active' : ''}` },
+      h('span', { class: 'rh-damage-player-name', text: player.name }),
+      h('span', { class: 'rh-damage-num', text: formatDamageNumber(player.current) }),
+      h('span', { class: 'rh-damage-num', text: formatDamageNumber(player.total) }),
+      h('span', { class: 'rh-damage-types', text: damageTypesText(player.currentTypes) }),
+    ));
+    damageEls.players.replaceChildren(playerHead, ...playerRows);
+  }
   if (!rows.length && !d.unattributed.current && !d.unattributed.total) {
     damageEls.table.replaceChildren(h('div', { class: 'rh-damage-empty', text: '尚未收到干员伤害事件' }));
   } else {
@@ -2013,6 +2094,7 @@ function attachNet() {
         const prev = state.room;
         state.room = msg;
         if (msg.code && msg.code !== prev?.code) resetDamageSession();
+        for (const seat of Array.isArray(msg.seats) ? msg.seats : []) if (seat?.playerId) ensureDamagePlayer(seat);
         if (msg.code && msg.code !== prev?.code) {
           pushLog('state', `房间 ${msg.code}`, `${msg.mode === 'solo' ? '独立' : '同盟'} · ${msg.difficulty}`);
         }
@@ -2026,6 +2108,7 @@ function attachNet() {
       case 'm.public': {
         const prevPhase = state.match?.phase;
         state.match = msg;
+        updateDamagePlayers(msg.players);
         parseDamageFrame(msg);
         if (msg.phase && msg.phase !== prevPhase) {
           const round = msg.lastRound ? ` · 第 ${msg.round}/${msg.lastRound} 回合` : '';
@@ -2073,7 +2156,9 @@ function attachNet() {
         break;
       }
       case 'm.private':
-        updateDamageUnits(msg.board || msg.units || [], 'private');
+        ensureDamagePlayer({ playerId: msg.playerId, name: msg.name });
+        updateDamagePlayers([{ playerId: msg.playerId, name: msg.name, stats: msg.stats }]);
+        updateDamageUnits(msg.board || msg.units || [], 'private', { playerId: msg.playerId });
         parseTeamEffects(msg.effects);
         break;
       case 'm.field':
@@ -2092,7 +2177,7 @@ function attachNet() {
         break;
       case 'm.unitStats':
         if (msg.round != null) resetDamageRound(msg.round);
-        updateDamageUnits(msg.units || [], 'unitStats');
+        updateDamageUnits(msg.units || [], 'unitStats', { playerId: state.playerId });
         break;
       default:
         if (STANDALONE.has(msg.t)) pushLog('state', `收到 ${msg.t}`);
