@@ -918,6 +918,11 @@
 .rh-about-meta .rh-link { color: var(--text-lo, #8a948f); }
 .rh-link:hover { text-decoration: underline; }
 
+/* v1.4.2 — the footer links are icons: quieter than text, colour on hover */
+.rh-icon-link { display: inline-flex; align-items: center; color: var(--text-lo, #8a948f); }
+.rh-icon-link:hover { color: var(--rh-ok, #4ed8af); text-decoration: none; }
+.rh-icon { width: 13px; height: 13px; display: block; }
+
 /* resize grip — bottom-right corner */
 .rh-grip {
   position: absolute;
@@ -979,8 +984,7 @@
   .rh-root { width: min(320px, calc(100vw - 20px)); font-size: 13px; }
   /* v1.4.1 — on a phone the collapsed strip is the resting state; keep it tiny: dot + R HUD + fold */
   .rh-root.is-collapsed .rh-head { gap: 4px; padding: 2px 4px 2px 6px; }
-  .rh-root.is-collapsed .rh-title { font-size: 0; letter-spacing: 0; }
-  .rh-root.is-collapsed .rh-title::after { content: 'R HUD'; font-size: 9px; letter-spacing: 0.06em; }
+  .rh-root.is-collapsed .rh-title { font-size: 9px; letter-spacing: 0.05em; }
   .rh-root.is-collapsed .rh-dot { width: 6px; height: 6px; }
   .rh-root.is-collapsed .rh-ibtn { width: 18px; height: 18px; font-size: 12px; }
   .rh-recall { width: 36px; height: 36px; font-size: 13px; }

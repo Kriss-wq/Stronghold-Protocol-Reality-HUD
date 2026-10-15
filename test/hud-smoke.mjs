@@ -46,8 +46,27 @@ const api = await page.evaluate(() => ({
   author: globalThis.__REALITY_HUD__?.author,
 }));
 check("面板已挂载", api.mounted);
-check("版本 1.4.1", api.ver === "1.4.1", String(api.ver));
+check("版本 1.4.2", api.ver === "1.4.2", String(api.ver));
 check("作者署名 Reality", api.author === "Reality", String(api.author));
+
+// v1.4.2: no brand text in the chrome, 邀请 leads the sections, the footer links are icons
+const chrome = await page.evaluate(() => {
+  const root = document.querySelector("#reality-hud");
+  return {
+    title: root.querySelector(".rh-title")?.textContent,
+    visSecs: [...root.querySelectorAll(".rh-body .rh-sec")].filter((s) => !s.hidden).slice(0, 4).map((s) => s.id).join(","),
+    footLinks: [...root.querySelectorAll(".rh-foot a")].map((a) => ({ href: a.getAttribute("href"), icon: !!a.querySelector(".rh-icon") })),
+    footText: root.querySelector(".rh-foot")?.textContent || "",
+  };
+});
+check("标题为 R HUD（无品牌字）", chrome.title === "R HUD", String(chrome.title));
+check("邀请区块在最前", chrome.visSecs === "rh-sec-invite,rh-sec-match,rh-sec-server,rh-sec-perf", chrome.visSecs);
+check("页脚两个图标链接（仓库 + 博客）", chrome.footLinks.length === 2
+  && chrome.footLinks.every((l) => l.icon)
+  && chrome.footLinks.some((l) => l.href.includes("Stronghold-Protocol-Reality-HUD"))
+  && chrome.footLinks.some((l) => l.href.includes("reality-blog"))
+  && !/reality-blog\.asia/.test(chrome.footText),
+  JSON.stringify(chrome.footLinks));
 
 // --- header is down to three buttons ---------------------------------------------------------
 const btns = await page.evaluate(() => [...document.querySelectorAll(".rh-head-actions .rh-ibtn")].map((b) => b.id));

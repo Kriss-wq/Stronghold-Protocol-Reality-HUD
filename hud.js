@@ -47,9 +47,11 @@ const AUTHOR = Object.freeze({
   githubHandle: 'xianshi3',
   blog: 'https://reality-blog.asia',
   blogLabel: 'reality-blog.asia',
+  repo: 'https://github.com/xianshi3/Stronghold-Protocol-Reality-HUD',
+  repoLabel: 'xianshi3/Stronghold-Protocol-Reality-HUD',
 });
 
-const MOD_VERSION = '1.4.1';
+const MOD_VERSION = '1.4.2';
 
 const DEFAULTS = {
   x: null,               // null = park it on the right edge (computed on first show)
@@ -138,6 +140,25 @@ function h(tag, attrs = {}, ...kids) {
   }
   return el;
 }
+
+/** A 24×24 inline SVG path (the footer's link icons). `h()` builds HTML elements only, so the
+ *  SVG namespace is explicit here. */
+function svgIcon(d) {
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('class', 'rh-icon');
+  svg.setAttribute('aria-hidden', 'true');
+  const path = document.createElementNS(NS, 'path');
+  path.setAttribute('d', d);
+  path.setAttribute('fill', 'currentColor');
+  svg.append(path);
+  return svg;
+}
+
+// GitHub mark (github.com/logos) · Material "public" globe (Apache-2.0)
+const ICON_GITHUB = 'M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12';
+const ICON_BLOG = 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z';
 
 function fmtDuration(ms) {
   if (!Number.isFinite(ms) || ms < 0) return '—';
@@ -400,7 +421,7 @@ function buildUi() {
 
   const header = h('div', { class: 'rh-head' },
     h('span', { class: 'rh-dot', id: 'rh-dot' }),
-    h('span', { class: 'rh-title', text: 'REALITY HUD' }),
+    h('span', { class: 'rh-title', text: 'R HUD' }),
     h('span', { class: 'rh-ver', id: 'rh-ver', text: '—' }),
     h('div', { class: 'rh-head-actions' },
       iconBtn('rh-fold', '—', '折叠 / 展开', () => {
@@ -521,12 +542,12 @@ function buildUi() {
         h('div', { class: 'rh-about-avatar', text: AUTHOR.name.slice(0, 1).toUpperCase() }),
         h('div', {},
           h('div', { class: 'rh-about-name', text: AUTHOR.name }),
-          h('div', { class: 'rh-about-role', text: `Reality HUD v${MOD_VERSION} · 作者 / Author` }),
+          h('div', { class: 'rh-about-role', text: `R HUD v${MOD_VERSION} · 作者 / Author` }),
         ),
       ),
       h('dl', { class: 'rh-about-meta' },
         h('dt', { text: '网名' }), h('dd', { text: AUTHOR.name }),
-        h('dt', { text: 'GitHub' }), h('dd', {}, h('a', { class: 'rh-link', href: AUTHOR.github, target: '_blank', rel: 'noopener noreferrer', text: `@${AUTHOR.githubHandle}` })),
+        h('dt', { text: 'GitHub' }), h('dd', {}, h('a', { class: 'rh-link', href: AUTHOR.repo, target: '_blank', rel: 'noopener noreferrer', title: AUTHOR.repo, text: AUTHOR.repoLabel })),
         h('dt', { text: '博客' }), h('dd', {}, h('a', { class: 'rh-link', href: AUTHOR.blog, target: '_blank', rel: 'noopener noreferrer', text: AUTHOR.blogLabel })),
         h('dt', { text: '许可' }), h('dd', { text: 'MIT（独立作品，不含游戏代码与素材）' }),
         h('dt', { text: '版本' }), h('dd', { text: MOD_VERSION }),
@@ -591,11 +612,10 @@ function buildUi() {
       h('span', { class: 'rh-foot-label', text: 'mod by' }),
       h('span', { class: 'rh-author-name', text: AUTHOR.name }),
       h('span', { class: 'rh-foot-sep', text: '·' }),
-      h('a', { class: 'rh-link', href: AUTHOR.github, target: '_blank', rel: 'noopener noreferrer', text: `@${AUTHOR.githubHandle}` }),
-      h('span', { class: 'rh-foot-sep', text: '·' }),
-      h('a', { class: 'rh-link', href: AUTHOR.blog, target: '_blank', rel: 'noopener noreferrer', text: AUTHOR.blogLabel }),
+      h('a', { class: 'rh-link rh-icon-link', href: AUTHOR.repo, target: '_blank', rel: 'noopener noreferrer', title: 'GitHub 仓库', 'aria-label': 'GitHub 仓库' }, svgIcon(ICON_GITHUB)),
+      h('a', { class: 'rh-link rh-icon-link', href: AUTHOR.blog, target: '_blank', rel: 'noopener noreferrer', title: `博客 ${AUTHOR.blogLabel}`, 'aria-label': `博客 ${AUTHOR.blogLabel}` }, svgIcon(ICON_BLOG)),
     ),
-    h('div', { class: 'rh-foot-note', text: `Reality HUD v${MOD_VERSION} · MIT License · 非官方玩家自制工具` }),
+    h('div', { class: 'rh-foot-note', text: `R HUD v${MOD_VERSION} · MIT License · 非官方玩家自制工具` }),
   );
 
   const grip = h('div', { class: 'rh-grip', id: 'rh-grip', title: '拖动调整宽度' });
@@ -605,7 +625,7 @@ function buildUi() {
 
   const body = h('div', { class: 'rh-body' },
     inviteToast, hero, sub, stats,
-    secServer, secMatch, secInvite, secPerf, secLog, secSettings, secAbout,
+    secInvite, secMatch, secServer, secPerf, secLog, secSettings, secAbout,
   );
 
   root.append(header, body, footer, grip);
@@ -716,7 +736,7 @@ function applySections() {
 function syncToggles() {
   const box = $('#rh-set-toggles', root);
   if (!box) return;
-  const labels = { server: '服务', match: '本局', invite: '邀请', perf: '性能', log: '日志', about: '关于', settings: '设置入口' };
+  const labels = { invite: '邀请', match: '本局', server: '服务', perf: '性能', log: '日志', about: '关于', settings: '设置入口' };
   box.replaceChildren(...Object.keys(labels).map((id) => h('button', {
     class: `rh-toggle ${state.cfg.show[id] ? 'is-on' : ''}`,
     text: labels[id],
@@ -1750,7 +1770,7 @@ let recallEl = null;
 function buildRecall() {
   return h('button', {
     class: 'rh-recall', id: 'rh-recall', type: 'button',
-    title: '唤回 Reality HUD（Shift+H）', 'aria-label': '唤回 Reality HUD',
+    title: '唤回 R HUD（Shift+H）', 'aria-label': '唤回 R HUD',
     onKeydown: (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); showOverlay(); } },
   }, 'R');
 }
@@ -1904,7 +1924,7 @@ globalThis.__REALITY_HUD__ = {
   version: MOD_VERSION,
   author: AUTHOR.name,
   authorDetail: AUTHOR,
-  links: { github: AUTHOR.github, blog: AUTHOR.blog },
+  links: { github: AUTHOR.github, blog: AUTHOR.blog, repo: AUTHOR.repo },
   config: state.cfg,
   save: saveConfig,
   reset: () => { localStorage.removeItem(STORAGE_KEY); location.reload(); },

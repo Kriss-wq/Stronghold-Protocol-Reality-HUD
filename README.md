@@ -3,7 +3,7 @@
 > **Reality HUD** —— 可拖拽的悬浮窗 mod，叠加在 [《卫戍协议：盟约》](https://github.com/sganggs/Stronghold-Protocol)（Stronghold Protocol，**原项目 / Upstream**）游戏页面之上：连接状态、真实延迟曲线、在线人数、本局信息、**免密钥邀请好友**、性能与事件日志，一屏看全。
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-4ed8af.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.4.1-4ed8af.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.4.2-4ed8af.svg)](CHANGELOG.md)
 [![Game version](https://img.shields.io/badge/game-0.1.3%E2%80%930.2.6-8a948f.svg)](#兼容性)
 
 **纯客户端视角**：不修改任何游戏代码，无构建步骤，无运行时依赖，随页面加载即用；游戏更新后照常工作（服务端补丁为可选增强，见下）。

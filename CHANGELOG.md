@@ -4,6 +4,15 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 ## [Unreleased]
 
+## [1.4.2] - 2026-10-15
+
+### Changed
+
+- **邀请最前**: the panel now runs 邀请 → 本局 → 服务 → 性能 → 事件日志 (was 服务 → 本局 → 邀请 → …), so the actionable part sits right under the latency strip; the settings toggle list follows the same order.
+- **去品牌字**: the panel chrome no longer prints "REALITY HUD" — the header, the collapsed strip, the footer note and the About role line all read `R HUD`, and the recall pill's tooltip follows. The mobile-only `R HUD` swap is gone because `R HUD` is the title everywhere (the desktop collapsed strip shrinks along with it).
+- **页脚图标**: the footer's two link texts (GitHub profile, blog address) become two small inline SVG icons — GitHub mark → the repository, globe → the blog; both keep tooltips and open in a new tab. The About section's GitHub row now points at the repository as well. `authorDetail` gains `repo`/`repoLabel`; `links` gains `repo`.
+- Smoke grew 43 → 46: the `R HUD` title, the 邀请-first section order and the footer icon links are asserted.
+
 ## [1.4.1] - 2026-10-15
 
 ### Changed
