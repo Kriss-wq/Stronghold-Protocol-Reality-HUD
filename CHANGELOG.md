@@ -2,6 +2,12 @@
 
 All notable changes to this project. Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- The optional server patch is rebased on upstream **v0.2.6**: `server-patch/reality-hud-invite.patch` was regenerated against the 0.2.6 tree and `git apply --check` verified clean (same 4 code files + 1 doc).
+
 ## [1.4.0] - 2026-10-14
 
 ### Added
