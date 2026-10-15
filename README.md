@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-4ed8af.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-1.4.0-4ed8af.svg)](CHANGELOG.md)
-[![Game version](https://img.shields.io/badge/game-0.1.3%E2%80%930.2.5-8a948f.svg)](#兼容性)
+[![Game version](https://img.shields.io/badge/game-0.1.3%E2%80%930.2.6-8a948f.svg)](#兼容性)
 
 **纯客户端视角**：不修改任何游戏代码，无构建步骤，无运行时依赖，随页面加载即用；游戏更新后照常工作（服务端补丁为可选增强，见下）。
 
@@ -48,7 +48,7 @@ author is [@xianshi3](https://github.com/xianshi3). The interface is Chinese-fir
 
 | 场景 | 支持情况 |
 |---|---|
-| [上游原项目 Stronghold Protocol](https://github.com/sganggs/Stronghold-Protocol) `0.1.3` – `0.2.5` | ✅ 全部基础功能（HUD 只使用游戏公开的 `__SP__` 接口与公开 GET 端点） |
+| [上游原项目 Stronghold Protocol](https://github.com/sganggs/Stronghold-Protocol) `0.1.3` – `0.2.6` | ✅ 全部基础功能（HUD 只使用游戏公开的 `__SP__` 接口与公开 GET 端点） |
 | 在线名单 + 一键邀请 | 需要服务端打上可选补丁（[`server-patch/`](docs/server-patch.md)）；**未打补丁时 HUD 自动降级**——名单栏显示提示后停止请求，复制邀请链接照常可用 |
 | 未装 HUD 的原版玩家 | ✅ 完全不受影响：`room.invited` 推送对原版客户端是未知消息，会被静默忽略 |
 | 安卓端（WebView 壳） | ✅ HUD 随页面加载，触屏可拖动；隐藏后点右下角 **R 浮标**唤回（v1.4.0，手机无键盘也不怕） |

@@ -7,6 +7,7 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 ### Changed
 
 - The optional server patch is rebased on upstream **v0.2.6**: `server-patch/reality-hud-invite.patch` was regenerated against the 0.2.6 tree and `git apply --check` verified clean (same 4 code files + 1 doc).
+- README compatibility statement now covers game versions `0.1.3` – `0.2.6`: the production server (patched fork + this HUD) was upgraded to v0.2.6 on 2026-10-15 with the smoke suite passing 40/40 against it.
 
 ## [1.4.0] - 2026-10-14
 
