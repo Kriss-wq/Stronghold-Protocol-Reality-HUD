@@ -925,6 +925,10 @@ function sourceForDamage(sourceId, targetId, context = null) {
   const at = now();
   while (pending.length && at - pending[0].at > 8000) pending.shift();
   if (!pending.length) { state.damage.attackSources.delete(key); return null; }
+  // Legacy frames do not carry a source id. If several projectiles are in flight for the same
+  // target, FIFO order is not evidence of ownership; dropping the ambiguous queue is safer than
+  // transferring damage to whichever operator happened to attack first.
+  if (pending.length !== 1) { state.damage.attackSources.delete(key); return null; }
   const next = pending.shift();
   if (pending.length) state.damage.attackSources.set(key, pending);
   else state.damage.attackSources.delete(key);
