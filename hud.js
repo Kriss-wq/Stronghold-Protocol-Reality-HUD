@@ -405,13 +405,18 @@ function damageScopedId(id, context = null) {
 function damageUnitKey(raw, ownerId = null, context = null) {
   if (raw == null) return '';
   if (typeof raw !== 'object') return damageScopedId(raw, context);
-  const runtimeId = raw.id ?? raw.unitId;
+  // Battle UnitInfo uses a numeric `id`; result/private snapshots may reuse `id` for the
+  // operator definition (a string such as chess_char_...). Treat string ids without a field
+  // context as snapshot metadata so equal operators from different players cannot collide.
+  const runtimeId = raw.unitId ?? ((context != null || typeof raw.id === 'number') ? raw.id : null);
   if (runtimeId != null && String(runtimeId) !== '') return damageScopedId(runtimeId, context);
   if (raw.uid != null && String(raw.uid) !== '') {
     const ownerKey = ownerId != null ? `${String(ownerId)}::uid:${String(raw.uid)}` : `uid:${String(raw.uid)}`;
     return `${damageContextKey(context)}${ownerKey}`;
   }
-  return `${damageContextKey(context)}${String(raw.defId ?? raw.name ?? '')}`;
+  const definitionId = raw.defId ?? (typeof raw.id === 'string' ? raw.id : null) ?? raw.name ?? '';
+  const ownerKey = ownerId != null && context == null ? `${String(ownerId)}::def:${String(definitionId)}` : String(definitionId);
+  return `${damageContextKey(context)}${ownerKey}`;
 }
 
 function isOperatorRecord(rec) {
