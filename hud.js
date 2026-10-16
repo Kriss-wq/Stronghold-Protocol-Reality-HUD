@@ -394,10 +394,24 @@ function normalizeDamageType(type) {
   return DAMAGE_TYPE_TEXT[key] ? key : key.replace(/[^a-z0-9_\u4e00-\u9fff-]/g, '') || 'unknown';
 }
 
-function damageUnitKey(raw) {
+function damageContextKey(context) {
+  return context == null || context === '' ? '' : `${String(context)}::`;
+}
+
+function damageScopedId(id, context = null) {
+  return `${damageContextKey(context)}${String(id)}`;
+}
+
+function damageUnitKey(raw, ownerId = null, context = null) {
   if (raw == null) return '';
-  if (typeof raw !== 'object') return String(raw);
-  return String(raw.uid ?? raw.unitId ?? raw.id ?? raw.defId ?? raw.name ?? '');
+  if (typeof raw !== 'object') return damageScopedId(raw, context);
+  const runtimeId = raw.id ?? raw.unitId;
+  if (runtimeId != null && String(runtimeId) !== '') return damageScopedId(runtimeId, context);
+  if (raw.uid != null && String(raw.uid) !== '') {
+    const ownerKey = ownerId != null ? `${String(ownerId)}::uid:${String(raw.uid)}` : `uid:${String(raw.uid)}`;
+    return `${damageContextKey(context)}${ownerKey}`;
+  }
+  return `${damageContextKey(context)}${String(raw.defId ?? raw.name ?? '')}`;
 }
 
 function isOperatorRecord(rec) {
@@ -409,12 +423,17 @@ function isOperatorRecord(rec) {
 
 function emptyDamageTypes() { return Object.create(null); }
 
-function ensureDamageUnit(raw, defaults = {}) {
-  const key = damageUnitKey(raw) || damageUnitKey(defaults) || 'unknown';
+function ensureDamageUnit(raw, defaults = {}, context = null) {
+  const src = (raw && typeof raw === 'object') ? raw : defaults;
+  const merged = { ...defaults, ...(src && typeof src === 'object' ? src : {}) };
+  const ownerId = merged.ownerId ?? merged.ownerPlayerId ?? merged.playerId
+    ?? (merged.owner && typeof merged.owner === 'object' ? merged.owner.playerId : null);
+  const key = damageUnitKey(raw, ownerId, context) || damageUnitKey(defaults, ownerId, context) || 'unknown';
   let rec = state.damage.units.get(key);
   if (!rec) {
     rec = {
       key,
+      context,
       id: null,
       uid: null,
       defId: null,
@@ -430,8 +449,7 @@ function ensureDamageUnit(raw, defaults = {}) {
     };
     state.damage.units.set(key, rec);
   }
-  const src = (raw && typeof raw === 'object') ? raw : defaults;
-  const merged = { ...defaults, ...(src && typeof src === 'object' ? src : {}) };
+  if (context != null) rec.context = context;
   if (merged.id != null) rec.id = String(merged.id);
   if (merged.uid != null) rec.uid = String(merged.uid);
   if (merged.defId != null) rec.defId = String(merged.defId);
@@ -439,8 +457,6 @@ function ensureDamageUnit(raw, defaults = {}) {
   if (merged.skillIndex != null && Number.isFinite(Number(merged.skillIndex))) rec.skillIndex = Number(merged.skillIndex);
   if (merged.kind != null) rec.kind = String(merged.kind);
   if (merged.side != null) rec.side = String(merged.side);
-  const ownerId = merged.ownerId ?? merged.ownerPlayerId ?? merged.playerId
-    ?? (merged.owner && typeof merged.owner === 'object' ? merged.owner.playerId : null);
   if (ownerId != null) rec.ownerId = String(ownerId);
   if (rec.ownerId) ensureDamagePlayer({ playerId: rec.ownerId, name: merged.ownerName });
   const resolvedName = damageDataName(rec);
@@ -768,10 +784,10 @@ function recordEnemyDamage(source, target, amount, type) {
   }
 }
 
-function recordDamage(source, amount, type, targetId = null) {
+function recordDamage(source, amount, type, targetId = null, context = null) {
   const n = Number(amount);
   if (!Number.isFinite(n) || n <= 0) return;
-  const target = unitFromId(targetId);
+  const target = unitFromId(targetId, context);
   if (source && source.side === 'enemy') {
     if (target && target.side === 'ally') {
       recordEnemyDamage(source, target, n, type);
@@ -829,45 +845,48 @@ function mergeReportedDamage(raw, rec, sourceKey = 'stats', snapshotKey = null, 
   }
 }
 
-function updateDamageUnits(rawUnits, sourceKey = 'frame', owner = {}, snapshotKey = null, allowStopped = false) {
+function updateDamageUnits(rawUnits, sourceKey = 'frame', owner = {}, snapshotKey = null, allowStopped = false, context = null) {
   if (!Array.isArray(rawUnits)) return;
   for (const raw of rawUnits) {
     if (!raw || typeof raw !== 'object') continue;
     const rec = ensureDamageUnit(raw, {
       ...(sourceKey.startsWith('result') || sourceKey === 'unitStats' ? { kind: 'op', side: 'ally' } : {}),
       ...(owner.playerId ? { ownerId: owner.playerId } : {}),
-    });
+    }, context);
     mergeReportedDamage(raw, rec, sourceKey, snapshotKey, allowStopped);
   }
   scheduleRender('damage');
 }
 
-function unitFromId(id) {
+function unitFromId(id, context = null) {
   if (id == null) return null;
   const key = String(id);
-  return state.damage.units.get(key) || [...state.damage.units.values()].find((r) => r.id === key || r.uid === key) || null;
+  const direct = state.damage.units.get(damageScopedId(key, context));
+  if (direct) return direct;
+  const matches = [...state.damage.units.values()].filter((r) => (context == null || r.context === context) && (r.id === key || r.uid === key));
+  return matches.length === 1 ? matches[0] : null;
 }
 
-function registerAttack(sourceId, targetId) {
+function registerAttack(sourceId, targetId, context = null) {
   if (sourceId == null || targetId == null) return;
   // A target may have several projectiles in flight at once. Keep a short FIFO
   // instead of replacing the previous attacker; the old single entry caused a
   // later hit to be credited to whichever operator attacked last.
-  const source = unitFromId(sourceId);
-  const target = unitFromId(targetId);
+  const source = unitFromId(sourceId, context);
+  const target = unitFromId(targetId, context);
   const operatorAttack = isOperatorRecord(source) && (!target || target.side === 'enemy');
   const enemyAttack = source?.side === 'enemy' && (!target || target.side === 'ally');
   if (!operatorAttack && !enemyAttack) return;
-  const key = String(targetId);
+  const key = damageScopedId(targetId, context);
   const pending = state.damage.attackSources.get(key) || [];
   pending.push({ source: String(sourceId), at: now() });
   while (pending.length > 16) pending.shift();
   state.damage.attackSources.set(key, pending);
 }
 
-function consumePendingAttack(targetId, sourceId) {
+function consumePendingAttack(targetId, sourceId, context = null) {
   if (targetId == null || sourceId == null) return;
-  const key = String(targetId);
+  const key = damageScopedId(targetId, context);
   const pending = state.damage.attackSources.get(key);
   if (!pending) return;
   const source = String(sourceId);
@@ -877,12 +896,12 @@ function consumePendingAttack(targetId, sourceId) {
   else state.damage.attackSources.delete(key);
 }
 
-function sourceForDamage(sourceId, targetId) {
+function sourceForDamage(sourceId, targetId, context = null) {
   if (sourceId != null) {
     // A modern damage tuple follows an older `atk` tuple in the same frame.
     // Consume that matching fallback entry so a later legacy hit cannot reuse it.
-    consumePendingAttack(targetId, sourceId);
-    const known = unitFromId(sourceId);
+    consumePendingAttack(targetId, sourceId, context);
+    const known = unitFromId(sourceId, context);
     if (!known) {
       // Without a field record we cannot prove that this source is one of our operators. Keep it
       // unattributed instead of manufacturing an ally record that could turn enemy damage into a
@@ -895,7 +914,7 @@ function sourceForDamage(sourceId, targetId) {
     if (known.side === 'enemy') return known;
     return isOperatorRecord(known) ? known : null;
   }
-  const key = targetId == null ? null : String(targetId);
+  const key = targetId == null ? null : damageScopedId(targetId, context);
   const pending = key == null ? null : state.damage.attackSources.get(key);
   if (!pending) return null;
   const at = now();
@@ -904,15 +923,15 @@ function sourceForDamage(sourceId, targetId) {
   const next = pending.shift();
   if (pending.length) state.damage.attackSources.set(key, pending);
   else state.damage.attackSources.delete(key);
-  const rec = unitFromId(next.source);
+  const rec = unitFromId(next.source, context);
   if (rec?.side === 'enemy') return rec;
   return isOperatorRecord(rec) ? rec : null;
 }
 
-function handleStatusEvent(unitId, key, active, raw = {}) {
+function handleStatusEvent(unitId, key, active, raw = {}, context = null) {
   // Status events can belong to enemies too. Only attach them after field metadata has identified
   // the unit; manufacturing an ally record here would later credit enemy damage to a fake operator.
-  const rec = unitFromId(unitId);
+  const rec = unitFromId(unitId, context);
   if (!rec) return;
   const payload = String(key) === 'skill' ? { ...raw, name: damageSkillName(rec, raw) || raw.name || raw.label || '技能' } : raw;
   ensureDamageEffect(rec, key, payload, active !== false);
@@ -920,6 +939,7 @@ function handleStatusEvent(unitId, key, active, raw = {}) {
 }
 
 function parseDamageEvent(event, frame = {}) {
+  const context = frame.damageContext ?? damageFrameKey(frame);
   if (Array.isArray(event)) {
     const kind = String(event[0] ?? '').toLowerCase();
     if (kind === 'spawn') {
@@ -927,11 +947,11 @@ function parseDamageEvent(event, frame = {}) {
       // their complete UnitInfo in b.ev. Register it before later damage
       // tuples in the same frame are resolved by source id.
       const unit = event[1];
-      if (unit && typeof unit === 'object') ensureDamageUnit(unit);
+      if (unit && typeof unit === 'object') ensureDamageUnit(unit, {}, context);
       return;
     }
     if (kind === 'atk' || kind === 'attack') {
-      if (event.length >= 3) registerAttack(event[1], event[2]);
+      if (event.length >= 3) registerAttack(event[1], event[2], context);
       return;
     }
     if (kind === 'dmg' || kind === 'damage' || kind === 'hit') {
@@ -943,15 +963,15 @@ function parseDamageEvent(event, frame = {}) {
       const targetId = legacySourceFirst ? event[2] : event[1];
       const amount = legacySourceFirst ? event[3] : event[2];
       const type = legacySourceFirst ? event[4] : event[3];
-      recordDamage(sourceForDamage(sourceId, targetId), amount, type, targetId);
+      recordDamage(sourceForDamage(sourceId, targetId, context), amount, type, targetId, context);
       return;
     }
     if (kind === 'status' || kind === 'buff' || kind === 'debuff' || kind === 'effect') {
-      handleStatusEvent(event[1], event[2], event[3] !== 0 && event[3] !== false, { duration: event[4], type: kind });
+      handleStatusEvent(event[1], event[2], event[3] !== 0 && event[3] !== false, { duration: event[4], type: kind }, context);
       return;
     }
     if (kind === 'skill') {
-      handleStatusEvent(event[1], 'skill', event[2] !== 0 && event[2] !== false, { positive: true, name: '技能' });
+      handleStatusEvent(event[1], 'skill', event[2] !== 0 && event[2] !== false, { positive: true, name: '技能' }, context);
     }
     return;
   }
@@ -959,18 +979,18 @@ function parseDamageEvent(event, frame = {}) {
   const kind = String(event.t ?? event.type ?? event.kind ?? '').toLowerCase();
   if (kind === 'spawn') {
     const unit = event.unit ?? event.data ?? event.payload;
-    if (unit && typeof unit === 'object') ensureDamageUnit(unit);
+    if (unit && typeof unit === 'object') ensureDamageUnit(unit, {}, context);
     return;
   }
-  if (kind === 'atk' || kind === 'attack') { registerAttack(event.sourceId ?? event.source ?? event.src ?? event.attacker, event.targetId ?? event.target ?? event.tgt); return; }
+  if (kind === 'atk' || kind === 'attack') { registerAttack(event.sourceId ?? event.source ?? event.src ?? event.attacker, event.targetId ?? event.target ?? event.tgt, context); return; }
   if (kind === 'dmg' || kind === 'damage' || kind === 'hit') {
     const targetId = event.targetId ?? event.target ?? event.tgt ?? event.to;
     const sourceId = event.sourceId ?? event.source ?? event.src ?? event.attacker ?? event.from;
-    recordDamage(sourceForDamage(sourceId, targetId), event.amount ?? event.damage ?? event.value ?? event.n, event.damageType ?? event.typeName ?? event.element ?? event.type, targetId);
+    recordDamage(sourceForDamage(sourceId, targetId, context), event.amount ?? event.damage ?? event.value ?? event.n, event.damageType ?? event.typeName ?? event.element ?? event.type, targetId, context);
     return;
   }
   if (kind === 'status' || kind === 'buff' || kind === 'debuff' || kind === 'effect') {
-    handleStatusEvent(event.unitId ?? event.targetId ?? event.target ?? event.id, event.key ?? event.status ?? event.effectId ?? event.name, event.active ?? event.on ?? event.enabled, event);
+    handleStatusEvent(event.unitId ?? event.targetId ?? event.target ?? event.id, event.key ?? event.status ?? event.effectId ?? event.name, event.active ?? event.on ?? event.enabled, event, context);
   }
 }
 
@@ -985,6 +1005,13 @@ function parseBattleEvents(msg) {
   }
   if (msg?.gt != null) state.damage.lastFrameAt = Number(msg.gt) || state.damage.lastFrameAt;
   scheduleRender('damage');
+}
+
+function damageFrameKey(msg = {}) {
+  const field = msg.fieldId ?? msg.field?.fieldId;
+  if (field != null && String(field) !== '') return `field:${String(field)}`;
+  const battle = msg.battleId;
+  return battle != null && String(battle) !== '' ? `battle:${String(battle)}` : null;
 }
 
 function rememberDamageFrame(msg, events) {
@@ -1023,18 +1050,19 @@ function parseTeamEffects(rawEffects) {
 
 function parseDamageFrame(msg) {
   if (!msg || typeof msg !== 'object') return;
+  const context = damageFrameKey(msg);
   if (msg.t === 'm.field' || msg.t === 'b.start') startDamageBattle(msg.battleId);
   if (msg.phase) setDamageLifecycle({ active: DAMAGE_BATTLE_PHASES.has(msg.phase), paused: !!msg.paused, phase: msg.phase });
   if (msg.round != null) resetDamageRound(msg.round);
   if (msg.battleId != null) state.damage.battleId = String(msg.battleId);
-  if (Array.isArray(msg.units)) updateDamageUnits(msg.units, msg.t || 'frame', {}, msg.battleId);
+  if (Array.isArray(msg.units)) updateDamageUnits(msg.units, msg.t || 'frame', {}, msg.battleId, false, context);
   if (!state.damage.collecting || state.damage.paused) return;
   if (Array.isArray(msg.effects)) parseTeamEffects(msg.effects);
   if (msg.spec) {
     const players = Array.isArray(msg.spec.players) ? msg.spec.players : [];
     for (const player of players) {
       ensureDamagePlayer(player);
-      updateDamageUnits(player?.units || player?.board || [], 'battle-spec', player);
+      updateDamageUnits(player?.units || player?.board || [], 'battle-spec', player, null, false, context);
     }
   }
   parseBattleEvents(msg);
@@ -1043,12 +1071,13 @@ function parseDamageFrame(msg) {
 function parseResultDamage(msg, allowFinal = false) {
   if (state.damage.paused || (!state.damage.collecting && !allowFinal)) return;
   const result = msg?.result && typeof msg.result === 'object' ? msg.result : msg;
+  const context = damageFrameKey(msg);
   for (const player of Array.isArray(result?.players) ? result.players : []) {
     ensureDamagePlayer(player);
     updateDamagePlayers([player], allowFinal, msg?.battleId);
-    updateDamageUnits(player?.unitStats || [], 'result', player, msg?.battleId, allowFinal);
+    updateDamageUnits(player?.unitStats || [], 'result', player, msg?.battleId, allowFinal, context);
     const units = player?.units || player?.lineup || [];
-    updateDamageUnits(units, 'result-units', player, msg?.battleId, allowFinal);
+    updateDamageUnits(units, 'result-units', player, msg?.battleId, allowFinal, context);
     if (player?.stats?.dmgDealt != null) {
       // Keep team-level result visible as unattributed when no per-operator stats exist.
       if (!Array.isArray(player.unitStats) || !player.unitStats.length) {
@@ -1057,7 +1086,7 @@ function parseResultDamage(msg, allowFinal = false) {
       }
     }
   }
-  updateDamageUnits(result?.unitStats || [], 'result', {}, msg?.battleId, allowFinal);
+  updateDamageUnits(result?.unitStats || [], 'result', {}, msg?.battleId, allowFinal, context);
   scheduleRender('damage');
 }
 
